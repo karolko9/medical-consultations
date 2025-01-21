@@ -1,7 +1,5 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { 
-  CalendarModule, 
   CalendarView, 
   CalendarEvent,
   CalendarEventTimesChangedEvent,
@@ -14,7 +12,6 @@ import { Subject, takeUntil } from 'rxjs';
 import { AppointmentService } from '../../services/appointment.service';
 import { AvailabilityService } from '../../services/availability.service';
 import { Appointment, AppointmentStatus, ConsultationType } from '../../models/appointment.model';
-import { AppointmentFormComponent } from '../appointment-form/appointment-form.component';
 
 type CalendarAppointmentEvent = CalendarEvent<Appointment>;
 
@@ -30,12 +27,6 @@ interface EventColors {
 
 @Component({
   selector: 'app-doctor-calendar',
-  standalone: true,
-  imports: [
-    CommonModule,
-    CalendarModule,
-    AppointmentFormComponent
-  ],
   templateUrl: './doctor-calendar.component.html',
   styleUrls: ['./doctor-calendar.component.scss']
 })

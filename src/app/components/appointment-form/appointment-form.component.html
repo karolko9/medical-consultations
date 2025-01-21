@@ -1,6 +1,6 @@
 <div class="appointment-form">
   <h2>Book Appointment</h2>
-  <p class="appointment-time">Start Time: {{ startTime | date:'medium' }}</p>
+  <p>Selected time: {{ startTime | date:'medium' }}</p>
 
   <form [formGroup]="appointmentForm" (ngSubmit)="onSubmit()">
     <!-- Duration -->
@@ -21,7 +21,7 @@
       <label for="consultationType">Type of Consultation</label>
       <select id="consultationType" formControlName="consultationType" class="form-control">
         <option *ngFor="let type of consultationTypes" [value]="type">
-          {{ type.replace('_', ' ') }}
+          {{ type }}
         </option>
       </select>
       <div class="error-message" *ngIf="consultationType?.errors?.['required'] && consultationType?.touched">
@@ -32,7 +32,13 @@
     <!-- Patient Name -->
     <div class="form-group">
       <label for="patientName">Full Name</label>
-      <input type="text" id="patientName" formControlName="patientName" class="form-control">
+      <input
+        type="text"
+        id="patientName"
+        formControlName="patientName"
+        class="form-control"
+        placeholder="Enter your full name"
+      >
       <div class="error-message" *ngIf="patientName?.errors?.['required'] && patientName?.touched">
         Name is required
       </div>
@@ -58,7 +64,13 @@
     <!-- Patient Age -->
     <div class="form-group">
       <label for="patientAge">Age</label>
-      <input type="number" id="patientAge" formControlName="patientAge" class="form-control">
+      <input
+        type="number"
+        id="patientAge"
+        formControlName="patientAge"
+        class="form-control"
+        placeholder="Enter your age"
+      >
       <div class="error-message" *ngIf="patientAge?.errors?.['required'] && patientAge?.touched">
         Age is required
       </div>
@@ -67,17 +79,25 @@
       </div>
     </div>
 
-    <!-- Additional Information -->
+    <!-- Additional Notes -->
     <div class="form-group">
-      <label for="additionalInfo">Additional Information</label>
-      <textarea id="additionalInfo" formControlName="additionalInfo" class="form-control" rows="3"></textarea>
+      <label for="notes">Additional Notes</label>
+      <textarea
+        id="notes"
+        formControlName="notes"
+        class="form-control"
+        rows="3"
+        placeholder="Any additional information for the doctor">
+      </textarea>
     </div>
 
     <!-- Form Actions -->
     <div class="form-actions">
-      <button type="button" class="btn btn-secondary" (click)="onCancel()">Cancel</button>
       <button type="submit" class="btn btn-primary" [disabled]="!appointmentForm.valid">
         Book Appointment
+      </button>
+      <button type="button" class="btn btn-secondary" (click)="onCancel()">
+        Cancel
       </button>
     </div>
   </form>

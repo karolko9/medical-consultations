@@ -1,44 +1,42 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ConsultationType } from '../../models/appointment.model';
+import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { Appointment, ConsultationType } from '../../models/appointment.model';
 
 @Component({
   selector: 'app-appointment-form',
-  standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './appointment-form.component.html',
   styleUrls: ['./appointment-form.component.scss']
 })
-export class AppointmentFormComponent {
+export class AppointmentFormComponent implements OnInit {
   @Input() startTime!: Date;
   @Input() availableSlots: number = 1;
-  @Output() submitAppointment = new EventEmitter<any>();
+  @Output() submitAppointment = new EventEmitter<Partial<Appointment>>();
   @Output() cancel = new EventEmitter<void>();
 
-  appointmentForm: FormGroup;
+  appointmentForm!: FormGroup;
   consultationTypes = Object.values(ConsultationType);
-  
-  constructor(private fb: FormBuilder) {
+
+  constructor(private fb: FormBuilder) {}
+
+  ngOnInit() {
     this.appointmentForm = this.fb.group({
-      duration: [30, [Validators.required, Validators.min(30), Validators.max(180)]],
-      consultationType: [ConsultationType.FIRST_VISIT, Validators.required],
+      duration: [30, [Validators.required, Validators.min(30), Validators.max(120)]],
+      consultationType: [ConsultationType.CONSULTATION, Validators.required],
       patientName: ['', [Validators.required, Validators.minLength(3)]],
       patientGender: ['', Validators.required],
       patientAge: ['', [Validators.required, Validators.min(0), Validators.max(150)]],
-      additionalInfo: ['']
+      notes: ['']
     });
   }
 
   onSubmit() {
     if (this.appointmentForm.valid) {
       const formValue = this.appointmentForm.value;
-      const appointment = {
+      this.submitAppointment.emit({
         ...formValue,
         start: this.startTime,
-        end: new Date(this.startTime.getTime() + formValue.duration * 60000) // Convert minutes to milliseconds
-      };
-      this.submitAppointment.emit(appointment);
+        end: new Date(this.startTime.getTime() + formValue.duration * 60000)
+      });
     }
   }
 
@@ -46,13 +44,13 @@ export class AppointmentFormComponent {
     this.cancel.emit();
   }
 
-  // Helper method to get available duration options based on available slots
   getDurationOptions(): number[] {
-    const options = [];
-    for (let i = 1; i <= Math.min(6, this.availableSlots); i++) {
-      options.push(i * 30); // 30-minute increments
+    const maxDuration = Math.min(this.availableSlots * 30, 120);
+    const durations: number[] = [];
+    for (let i = 30; i <= maxDuration; i += 30) {
+      durations.push(i);
     }
-    return options;
+    return durations;
   }
 
   // Getters for form controls
