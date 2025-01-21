@@ -214,11 +214,13 @@ export class DoctorCalendarComponent implements OnInit, OnDestroy {
     
     while (availableCount < 6) { // Max 3 hours (6 slots of 30 minutes)
       const nextSlot = addMinutes(currentTime, 30);
+      const nextSlotHour = nextSlot.getHours();
+      const nextSlotMinutes = nextSlot.getMinutes();
       
-      // Check if next slot is available and within doctor's hours
-      const isWithinHours = nextSlot.getHours() < this.dayEndHour;
+      // Check if next slot is available and not past 14:00
+      const isWithinHours = nextSlotHour < 14 || (nextSlotHour === 14 && nextSlotMinutes === 0);
       const isSlotAvailable = !this.events.some(event => {
-        const eventEnd = event.end || addMinutes(event.start, 30); // Default to 30 minutes if end is not set
+        const eventEnd = event.end || addMinutes(event.start, 30);
         return currentTime >= event.start && currentTime < eventEnd;
       });
 
