@@ -24,10 +24,12 @@
       [dayStartHour]="dayStartHour"
       [dayEndHour]="dayEndHour"
       [hourSegments]="hourSegments"
-      [hourSegmentHeight]="60"
+      [hourSegmentHeight]="hourSegmentHeight"
       [refresh]="refresh"
-      (eventClicked)="handleEventClick($event.event)"
-      [headerTemplate]="customHeader">
+      (eventClicked)="handleEventClick($event)"
+      (hourSegmentClicked)="handleSlotClick($event)"
+      [headerTemplate]="customHeader"
+      [precision]="'minutes'">
     </mwl-calendar-week-view>
   </div>
 </div>
@@ -46,3 +48,16 @@
     </div>
   </div>
 </ng-template>
+
+<!-- Appointment Form Modal -->
+<div class="modal" *ngIf="showAppointmentForm" [class.show]="showAppointmentForm">
+  <div class="modal-backdrop" (click)="closeForm()"></div>
+  <div class="modal-content">
+    <app-appointment-form
+      [startTime]="selectedSlot!"
+      [availableSlots]="availableSlots"
+      (submitAppointment)="handleAppointmentSubmit($event)"
+      (cancel)="closeForm()">
+    </app-appointment-form>
+  </div>
+</div>
