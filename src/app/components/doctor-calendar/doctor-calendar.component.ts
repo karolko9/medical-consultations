@@ -9,7 +9,7 @@ import {
   CalendarEventTitleFormatter,
   CalendarWeekViewBeforeRenderEvent
 } from 'angular-calendar';
-import { addHours, startOfDay, endOfDay, addDays, isBefore, isSameDay, addMinutes } from 'date-fns';
+import { addHours, startOfDay, endOfDay, addDays, isBefore, isSameDay, addMinutes, format } from 'date-fns';
 import { Subject, takeUntil } from 'rxjs';
 import { AppointmentService } from '../../services/appointment.service';
 import { AvailabilityService } from '../../services/availability.service';
@@ -49,7 +49,7 @@ export class DoctorCalendarComponent implements OnInit, OnDestroy {
   
   // Calendar display settings
   dayStartHour = 8;
-  dayEndHour = 14; // 6-hour window
+  dayEndHour = 13; // 5-hour window
   hourSegments = 2; // 30-minute slots (2 segments per hour)
   hourSegmentHeight = 30; // Height of each 30-minute slot
   
@@ -94,7 +94,7 @@ export class DoctorCalendarComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe(appointments => {
         this.events = appointments.map(appointment => {
-          const duration = appointment.duration || 30; // Default to 30 minutes if not specified
+          const duration = appointment.duration || 30;
           return {
             start: appointment.start,
             end: addMinutes(appointment.start, duration),
@@ -126,6 +126,49 @@ export class DoctorCalendarComponent implements OnInit, OnDestroy {
 
     // Otherwise, use consultation type color
     return this.consultationTypeColors[appointment.consultationType];
+  }
+
+  getEventTooltip(event: CalendarAppointmentEvent): string {
+    const appointment = event.meta;
+    if (!appointment) return '';
+
+    const statusColors = {
+      [AppointmentStatus.SCHEDULED]: '#1e90ff',
+      [AppointmentStatus.COMPLETED]: '#00FF00',
+      [AppointmentStatus.CANCELLED]: '#FF0000',
+      [AppointmentStatus.NO_SHOW]: '#808080'
+    };
+
+    return `
+      <div class="event-tooltip">
+        <div class="tooltip-header" style="background-color: ${event.color?.primary}">
+          <strong>${appointment.consultationType}</strong>
+        </div>
+        <div class="tooltip-content">
+          <div class="tooltip-section">
+            <strong>Patient Information</strong>
+            <p>Name: ${appointment.patientName}</p>
+            <p>Age: ${appointment.patientAge}</p>
+            <p>Gender: ${appointment.patientGender}</p>
+          </div>
+          
+          <div class="tooltip-section">
+            <strong>Appointment Details</strong>
+            <p>Date: ${format(event.start, 'dd/MM/yyyy')}</p>
+            <p>Time: ${format(event.start, 'HH:mm')} - ${format(event.end!, 'HH:mm')}</p>
+            <p>Duration: ${appointment.duration} minutes</p>
+            <p>Status: <span style="color: ${statusColors[appointment.status]}">${appointment.status}</span></p>
+          </div>
+          
+          ${appointment.notes ? `
+          <div class="tooltip-section">
+            <strong>Additional Notes</strong>
+            <p>${appointment.notes}</p>
+          </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
   }
 
   handleEventClick(eventClickedEvent: CalendarEventClickedEvent): void {

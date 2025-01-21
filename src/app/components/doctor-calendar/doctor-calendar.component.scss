@@ -131,8 +131,70 @@
   }
 }
 
-// Calendar event styles
-:host ::ng-deep {
+// Event tooltip styles
+::ng-deep {
+  .cal-tooltip {
+    .event-tooltip {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      font-size: 14px;
+      line-height: 1.4;
+      min-width: 300px;
+      max-width: 400px;
+      opacity: 1 !important;
+      
+      .tooltip-header {
+        padding: 10px 15px;
+        border-top-left-radius: 8px;
+        border-top-right-radius: 8px;
+        
+        strong {
+          color: white;
+          font-size: 16px;
+          text-transform: uppercase;
+        }
+      }
+      
+      .tooltip-content {
+        padding: 15px;
+        background: white;
+        border-bottom-left-radius: 8px;
+        border-bottom-right-radius: 8px;
+      }
+      
+      .tooltip-section {
+        margin-bottom: 15px;
+        
+        &:last-child {
+          margin-bottom: 0;
+        }
+        
+        strong {
+          color: #333;
+          display: block;
+          margin-bottom: 8px;
+          font-size: 15px;
+          border-bottom: 1px solid #eee;
+          padding-bottom: 5px;
+        }
+        
+        p {
+          margin: 5px 0;
+          color: #666;
+          
+          &:first-of-type {
+            margin-top: 0;
+          }
+          
+          &:last-of-type {
+            margin-bottom: 0;
+          }
+        }
+      }
+    }
+  }
+  
   .cal-event {
     border-radius: 4px;
     font-size: 0.9em;

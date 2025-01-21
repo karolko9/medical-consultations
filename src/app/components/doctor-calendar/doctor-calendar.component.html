@@ -29,10 +29,15 @@
       (eventClicked)="handleEventClick($event)"
       (hourSegmentClicked)="handleSlotClick($event)"
       [headerTemplate]="customHeader"
-      [precision]="'minutes'">
+      [precision]="'minutes'"
+      [tooltipTemplate]="eventTooltip">
     </mwl-calendar-week-view>
   </div>
 </div>
+
+<ng-template #eventTooltip let-event="event">
+  <div [innerHTML]="getEventTooltip(event)"></div>
+</ng-template>
 
 <ng-template #customHeader let-days="days" let-locale="locale">
   <div class="cal-day-headers">
