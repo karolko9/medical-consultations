@@ -1,0 +1,74 @@
+.calendar-container {
+  padding: 20px;
+  
+  .calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    
+    .calendar-title {
+      h2 {
+        margin: 0;
+        font-size: 24px;
+      }
+    }
+    
+    .calendar-navigation {
+      button {
+        margin: 0 5px;
+      }
+    }
+  }
+}
+
+// Custom header styles
+.cal-day-headers {
+  display: flex;
+  
+  .cal-header {
+    flex: 1;
+    text-align: center;
+    padding: 8px;
+    border: 1px solid #e1e1e1;
+    background-color: #f8f9fa;
+    
+    &.cal-past {
+      background-color: #f5f5f5;
+      color: #999;
+    }
+    
+    &.cal-today {
+      background-color: #e8fdf5;
+      font-weight: bold;
+    }
+    
+    &.cal-future {
+      background-color: white;
+    }
+    
+    b {
+      font-size: 14px;
+    }
+    
+    span {
+      font-size: 20px;
+    }
+    
+    small {
+      display: block;
+      font-size: 12px;
+      color: #666;
+    }
+  }
+}
+
+// Calendar event styles
+.cal-event {
+  border-radius: 4px;
+  padding: 2px 5px;
+  
+  &.past-event {
+    opacity: 0.7;
+  }
+}

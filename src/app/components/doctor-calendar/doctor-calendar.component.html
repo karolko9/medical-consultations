@@ -1,0 +1,48 @@
+<div class="calendar-container">
+  <div class="calendar-header">
+    <div class="calendar-title">
+      <h2>{{ viewDate | date:'MMMM y' }}</h2>
+    </div>
+    <div class="calendar-navigation">
+      <button class="btn btn-primary" mwlCalendarPreviousView [view]="view" [(viewDate)]="viewDate">
+        Previous
+      </button>
+      <button class="btn btn-outline-secondary" mwlCalendarToday [(viewDate)]="viewDate">
+        Today
+      </button>
+      <button class="btn btn-primary" mwlCalendarNextView [view]="view" [(viewDate)]="viewDate">
+        Next
+      </button>
+    </div>
+  </div>
+
+  <div [ngSwitch]="view">
+    <mwl-calendar-week-view
+      *ngSwitchCase="CalendarView.Week"
+      [viewDate]="viewDate"
+      [events]="events"
+      [dayStartHour]="dayStartHour"
+      [dayEndHour]="dayEndHour"
+      [hourSegments]="hourSegments"
+      [hourSegmentHeight]="60"
+      [refresh]="refresh"
+      (eventClicked)="handleEventClick($event.event)"
+      [headerTemplate]="customHeader">
+    </mwl-calendar-week-view>
+  </div>
+</div>
+
+<ng-template #customHeader let-days="days" let-locale="locale">
+  <div class="cal-day-headers">
+    <div
+      class="cal-header"
+      *ngFor="let day of days"
+      [class.cal-past]="day.isPast"
+      [class.cal-today]="day.isToday"
+      [class.cal-future]="day.isFuture">
+      <b>{{ day.date | date:'EEE' }}</b><br>
+      <span>{{ day.date | date:'d' }}</span><br>
+      <small>{{ getAppointmentCount(day.date) }} appointments</small>
+    </div>
+  </div>
+</ng-template>
