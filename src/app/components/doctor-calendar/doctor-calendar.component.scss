@@ -3,45 +3,45 @@
   background: white;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  
+
   .calendar-header {
+    margin-bottom: 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
-    
-    .calendar-title {
-      h2 {
-        margin: 0;
-        color: #2c3e50;
-      }
+
+    h2 {
+      margin: 0;
+      color: #2c3e50;
+      font-weight: 500;
     }
-    
+
     .calendar-navigation {
       display: flex;
       gap: 10px;
-      
-      button {
+
+      .btn {
         padding: 8px 16px;
-        border: none;
         border-radius: 4px;
-        cursor: pointer;
-        transition: background-color 0.2s;
-        
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s;
+
         &.btn-primary {
           background-color: #3498db;
+          border-color: #3498db;
           color: white;
-          
+
           &:hover {
             background-color: #2980b9;
+            border-color: #2980b9;
           }
         }
-        
+
         &.btn-outline-secondary {
-          background-color: transparent;
-          border: 1px solid #95a5a6;
+          border-color: #95a5a6;
           color: #95a5a6;
-          
+
           &:hover {
             background-color: #95a5a6;
             color: white;
@@ -57,37 +57,37 @@
   display: flex;
   border-bottom: 1px solid #e1e1e1;
   margin-bottom: 10px;
-  
+
   .cal-header {
     flex: 1;
     text-align: center;
     padding: 10px;
     background-color: #f8f9fa;
     border-right: 1px solid #e1e1e1;
-    
+
     &:last-child {
       border-right: none;
     }
-    
+
     &.cal-past {
       color: #95a5a6;
     }
-    
+
     &.cal-today {
       background-color: #e1f5fe;
       font-weight: bold;
     }
-    
+
     b {
       font-size: 1.1em;
     }
-    
+
     span {
       display: block;
       margin: 5px 0;
       font-size: 1.2em;
     }
-    
+
     small {
       color: #666;
     }
@@ -103,13 +103,13 @@
   width: 100%;
   height: 100%;
   z-index: 1000;
-  
+
   &.show {
     display: flex;
     justify-content: center;
     align-items: center;
   }
-  
+
   .modal-backdrop {
     position: absolute;
     top: 0;
@@ -118,7 +118,7 @@
     height: 100%;
     background-color: rgba(0, 0, 0, 0.5);
   }
-  
+
   .modal-content {
     position: relative;
     z-index: 1001;
@@ -133,87 +133,215 @@
 
 // Event tooltip styles
 ::ng-deep {
-  .cal-tooltip {
-    .event-tooltip {
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-      font-size: 14px;
-      line-height: 1.4;
-      min-width: 300px;
-      max-width: 400px;
-      opacity: 1 !important;
-      
-      .tooltip-header {
-        padding: 10px 15px;
-        border-top-left-radius: 8px;
-        border-top-right-radius: 8px;
-        
-        strong {
-          color: white;
-          font-size: 16px;
-          text-transform: uppercase;
-        }
-      }
-      
-      .tooltip-content {
-        padding: 15px;
-        background: white;
-        border-bottom-left-radius: 8px;
-        border-bottom-right-radius: 8px;
-      }
-      
-      .tooltip-section {
-        margin-bottom: 15px;
-        
-        &:last-child {
-          margin-bottom: 0;
-        }
-        
-        strong {
-          color: #333;
-          display: block;
-          margin-bottom: 8px;
-          font-size: 15px;
-          border-bottom: 1px solid #eee;
-          padding-bottom: 5px;
-        }
-        
-        p {
-          margin: 5px 0;
-          color: #666;
-          
-          &:first-of-type {
-            margin-top: 0;
+  // Style dla nagłówków kalendarza
+  .cal-week-view {
+    .cal-time-events {
+      .cal-time-label-column {
+        .cal-hour {
+          background-color: white !important;
+          &:nth-child(odd) {
+            background-color: #fafafa !important;
           }
-          
-          &:last-of-type {
-            margin-bottom: 0;
+        }
+
+        // Style dla segmentów w kolumnie godzin
+        .cal-hour-segment {
+          background-color: inherit !important;
+          border-left: none !important;
+          cursor: default !important;
+
+          &.available, &.unavailable {
+            background-color: inherit !important;
+            border-left: none !important;
+          }
+
+          &:hover {
+            background-color: inherit !important;
           }
         }
       }
     }
-  }
-  
-  .cal-event {
-    border-radius: 4px;
-    font-size: 0.9em;
-    
-    &.past-event {
-      opacity: 0.7;
+
+    // Style dla nagłówków kolumn
+    .cal-header {
+      text-align: center;
+      font-weight: 500;
+      padding: 8px;
+
+      .cal-day-number {
+        opacity: 0.5;
+        margin-top: 4px;
+        font-size: 0.9em;
+      }
+
+      .appointment-count {
+        display: inline-block;
+        background: #3498db;
+        color: white;
+        border-radius: 12px;
+        padding: 2px 8px;
+        font-size: 0.8em;
+        margin-left: 8px;
+      }
     }
   }
-  
+
   .cal-hour-segment {
+    position: relative;
     cursor: pointer;
     transition: background-color 0.2s;
-    
+
+    &.available {
+      background-color: rgba(40, 167, 69, 0.1) !important;
+      border-left: 3px solid #28a745 !important;
+
+      &:hover {
+        background-color: rgba(40, 167, 69, 0.2) !important;
+      }
+    }
+
+    &.unavailable {
+      background-color: rgba(220, 53, 69, 0.1) !important;
+      border-left: 3px solid #dc3545 !important;
+      cursor: not-allowed;
+
+      &:hover {
+        background-color: rgba(220, 53, 69, 0.2) !important;
+      }
+    }
+
     &:hover {
-      background-color: rgba(52, 152, 219, 0.1);
+      background-color: rgba(0, 0, 0, 0.05);
     }
   }
-  
+
+  // Style dla wydarzeń
+  .cal-event {
+    border-radius: 4px;
+    padding: 2px 5px;
+    margin: 1px;
+    transition: all 0.2s;
+
+    &.appointment-event {
+      background-color: #1e88e5 !important;
+      border: none !important;
+      color: white !important;
+      font-weight: 500;
+      font-size: 0.9em;
+
+      &:hover {
+        transform: scale(1.02);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+    }
+  }
+
+  // Style dla tooltipów
+  .event-tooltip {
+    min-width: 200px;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+    .tooltip-header {
+      padding: 8px;
+      color: white;
+      font-weight: bold;
+    }
+
+    .tooltip-content {
+      padding: 8px;
+      background: white;
+      color: #2c3e50;
+
+      p {
+        margin: 5px 0;
+        font-size: 14px;
+      }
+    }
+  }
+
+  // Style dla nagłówków kalendarza
+  .cal-header {
+    padding: 5px;
+    font-weight: 500;
+    text-align: center;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+  }
+
+  // Style dla godzin
   .cal-hour {
+    font-weight: 500;
+    color: #2c3e50;
+  }
+
+  // Style dla dostępności (zielone tło)
+  .cal-event.availability-event {
+    background-color: transparent !important;
+    border: none !important;
+
+    .cal-event-title {
+      display: none;
+    }
+  }
+
+  // Style dla nieobecności (czerwone tło)
+  .cal-event.absence-event {
+    background-color: transparent !important;
+    border: none !important;
+
+    .cal-event-title {
+      display: none;
+    }
+  }
+
+  // Tło dla dostępności
+  .cal-hour-segment.available {
+    background-color: rgba(40, 167, 69, 0.1) !important;
+  }
+
+  // Tło dla nieobecności
+  .cal-hour-segment.unavailable {
+    background-color: rgba(220, 53, 69, 0.1) !important;
+  }
+
+  // Style dla wizyt
+  .cal-event.appointment-event {
+    background-color: #1e88e5 !important;
+    border: none !important;
+    color: white !important;
     font-weight: bold;
+    border-radius: 4px;
+    padding: 2px 5px;
+  }
+
+  // Hover na segmentach godzin
+  .cal-hour-segment:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+}
+
+// Style dla tooltipów
+.event-tooltip {
+  min-width: 200px;
+  padding: 0;
+  border-radius: 4px;
+  overflow: hidden;
+
+  .tooltip-header {
+    padding: 8px;
+    color: white;
+    font-weight: bold;
+  }
+
+  .tooltip-content {
+    padding: 8px;
+    background: white;
+
+    p {
+      margin: 5px 0;
+      font-size: 14px;
+    }
   }
 }

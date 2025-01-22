@@ -1,88 +1,89 @@
 import { Injectable } from '@angular/core';
-import { Observable, of, BehaviorSubject } from 'rxjs';
-import { DoctorAvailability, AvailabilityType } from '../models/availability.model';
-import { isWithinInterval, eachDayOfInterval } from 'date-fns';
+import { Observable, of } from 'rxjs';
+import { DoctorAvailability } from '../models/availability.model';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AvailabilityService {
   private availabilities: DoctorAvailability[] = [];
-  private availabilitiesSubject = new BehaviorSubject<DoctorAvailability[]>([]);
+  private nextId = 1;
 
-  constructor() {
-    // Initialize with some mock recurring availability
-    this.addAvailability({
-      type: AvailabilityType.RECURRING,
-      startDate: new Date(2025, 0, 1), // January 1, 2025
-      endDate: new Date(2025, 11, 31), // December 31, 2025
-      weekDays: [1, 2, 3, 4, 5], // Monday to Friday
-      timeSlots: [
-        { start: '08:00', end: '12:00' },
-        { start: '13:00', end: '17:00' }
-      ]
-    });
-  }
+  constructor() {}
 
   getAvailabilities(): Observable<DoctorAvailability[]> {
-    return this.availabilitiesSubject.asObservable();
+    return of(this.availabilities);
   }
 
-  addAvailability(availability: DoctorAvailability): Observable<DoctorAvailability> {
-    availability.id = this.generateId();
+  addAvailability(availability: DoctorAvailability): Observable<void> {
+    availability.id = this.nextId.toString();
+    this.nextId++;
     this.availabilities.push(availability);
-    this.availabilitiesSubject.next(this.availabilities);
-    return of(availability);
+    return of(void 0);
   }
 
-  removeAvailability(id: string): Observable<boolean> {
+  removeAvailability(id: string): Observable<void> {
     const index = this.availabilities.findIndex(a => a.id === id);
     if (index !== -1) {
       this.availabilities.splice(index, 1);
-      this.availabilitiesSubject.next(this.availabilities);
-      return of(true);
     }
-    return of(false);
+    return of(void 0);
   }
 
-  getAvailabilityForDate(date: Date): Observable<DoctorAvailability[]> {
+  isTimeSlotAvailable(date: Date, startTime: string, endTime: string): boolean {
     const dayOfWeek = date.getDay();
-    
-    const availableSlots = this.availabilities.filter(availability => {
-      if (availability.type === AvailabilityType.ABSENCE) {
-        // Check if the date falls within an absence period
-        return !isWithinInterval(date, {
-          start: availability.startDate,
-          end: availability.endDate
-        });
+    const dateString = date.toISOString().split('T')[0];
+
+    return !this.availabilities.some(availability => {
+      // Check if the date is within the availability period
+      const startDate = new Date(availability.startDate);
+      const endDate = new Date(availability.endDate);
+      
+      if (date < startDate || date > endDate) {
+        return false;
       }
 
-      if (availability.type === AvailabilityType.ONE_TIME) {
-        // Check if it's a one-time availability for this specific date
-        return isWithinInterval(date, {
-          start: availability.startDate,
-          end: availability.endDate
-        });
+      // For recurring availability, check if it's the right day of the week
+      if (availability.weekDays && !availability.weekDays.includes(dayOfWeek)) {
+        return false;
       }
 
-      if (availability.type === AvailabilityType.RECURRING) {
-        // Check if it's within the recurring availability period and matches weekday
+      // Check if there's any time slot conflict
+      return availability.timeSlots?.some(slot => {
+        const slotStart = new Date(`${dateString}T${slot.start}`);
+        const slotEnd = new Date(`${dateString}T${slot.end}`);
+        const checkStart = new Date(`${dateString}T${startTime}`);
+        const checkEnd = new Date(`${dateString}T${endTime}`);
+
         return (
-          isWithinInterval(date, {
-            start: availability.startDate,
-            end: availability.endDate
-          }) &&
-          availability.weekDays?.includes(dayOfWeek)
+          (checkStart >= slotStart && checkStart < slotEnd) ||
+          (checkEnd > slotStart && checkEnd <= slotEnd) ||
+          (checkStart <= slotStart && checkEnd >= slotEnd)
         );
-      }
+      });
+    });
+  }
 
-      return false;
+  getDoctorAvailabilityForDay(date: Date): { start: string; end: string }[] {
+    const dayOfWeek = date.getDay();
+    const availableSlots: { start: string; end: string }[] = [];
+
+    this.availabilities.forEach(availability => {
+      const startDate = new Date(availability.startDate);
+      const endDate = new Date(availability.endDate);
+
+      if (date >= startDate && date <= endDate) {
+        if (
+          availability.weekDays?.includes(dayOfWeek) ||
+          !availability.weekDays // One-time or absence
+        ) {
+          availability.timeSlots?.forEach(slot => {
+            availableSlots.push(slot);
+          });
+        }
+      }
     });
 
-    return of(availableSlots);
-  }
-
-  private generateId(): string {
-    return Math.random().toString(36).substr(2, 9);
+    return availableSlots;
   }
 }

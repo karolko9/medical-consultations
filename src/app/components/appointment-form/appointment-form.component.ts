@@ -8,55 +8,68 @@ import { Appointment, ConsultationType } from '../../models/appointment.model';
   styleUrls: ['./appointment-form.component.scss']
 })
 export class AppointmentFormComponent implements OnInit {
-  @Input() startTime!: Date;
-  @Input() availableSlots: number = 1;
-  @Output() submitAppointment = new EventEmitter<Partial<Appointment>>();
-  @Output() cancel = new EventEmitter<void>();
+  @Input() selectedDate: Date | null = null;
+  @Input() availableSlots: number = 0;
+  @Output() appointmentSubmitted = new EventEmitter<Partial<Appointment>>();
+  @Output() formClosed = new EventEmitter<void>();
 
-  appointmentForm!: FormGroup;
+  appointmentForm: FormGroup;
   consultationTypes = Object.values(ConsultationType);
+  maxDuration: number = 30; // Default max duration
 
-  constructor(private fb: FormBuilder) {}
-
-  ngOnInit() {
+  constructor(private fb: FormBuilder) {
     this.appointmentForm = this.fb.group({
-      duration: [30, [Validators.required, Validators.min(30), Validators.max(120)]],
-      consultationType: [ConsultationType.CONSULTATION, Validators.required],
-      patientName: ['', [Validators.required, Validators.minLength(3)]],
-      patientGender: ['', Validators.required],
+      patientName: ['', Validators.required],
       patientAge: ['', [Validators.required, Validators.min(0), Validators.max(150)]],
+      patientGender: ['', Validators.required],
+      consultationType: [ConsultationType.CONSULTATION, Validators.required],
+      duration: [30, [Validators.required, Validators.min(30), Validators.max(180)]],
       notes: ['']
     });
   }
 
+  ngOnInit() {
+    // Update max duration based on available slots
+    this.maxDuration = this.availableSlots * 30;
+    this.appointmentForm.get('duration')?.setValidators([
+      Validators.required,
+      Validators.min(30),
+      Validators.max(this.maxDuration)
+    ]);
+    this.appointmentForm.get('duration')?.updateValueAndValidity();
+  }
+
   onSubmit() {
-    if (this.appointmentForm.valid) {
+    if (this.appointmentForm.valid && this.selectedDate) {
       const formValue = this.appointmentForm.value;
-      this.submitAppointment.emit({
+      this.appointmentSubmitted.emit({
         ...formValue,
-        start: this.startTime,
-        end: new Date(this.startTime.getTime() + formValue.duration * 60000)
+        start: this.selectedDate
       });
     }
   }
 
   onCancel() {
-    this.cancel.emit();
+    this.formClosed.emit();
   }
 
-  getDurationOptions(): number[] {
-    const maxDuration = Math.min(this.availableSlots * 30, 120);
-    const durations: number[] = [];
-    for (let i = 30; i <= maxDuration; i += 30) {
-      durations.push(i);
-    }
-    return durations;
+  get formattedDate(): string {
+    return this.selectedDate ? 
+      new Date(this.selectedDate).toLocaleString('pl-PL', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }) : '';
   }
 
-  // Getters for form controls
-  get duration() { return this.appointmentForm.get('duration'); }
-  get consultationType() { return this.appointmentForm.get('consultationType'); }
-  get patientName() { return this.appointmentForm.get('patientName'); }
-  get patientGender() { return this.appointmentForm.get('patientGender'); }
-  get patientAge() { return this.appointmentForm.get('patientAge'); }
+  get availableDuration(): string {
+    const hours = Math.floor(this.maxDuration / 60);
+    const minutes = this.maxDuration % 60;
+    return hours > 0 ? 
+      `${hours} godzin${hours === 1 ? 'a' : 'y'} ${minutes > 0 ? `i ${minutes} minut` : ''}` : 
+      `${minutes} minut`;
+  }
 }

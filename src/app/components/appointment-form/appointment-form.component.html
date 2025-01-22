@@ -1,104 +1,79 @@
-<div class="appointment-form">
-  <h2>Book Appointment</h2>
-  <p>Selected time: {{ startTime | date:'medium' }}</p>
+<form [formGroup]="appointmentForm" (ngSubmit)="onSubmit()" class="appointment-form">
+  <div class="appointment-info">
+    <h4>Termin wizyty:</h4>
+    <p>{{ formattedDate }}</p>
+    <p>Maksymalny czas wizyty: {{ availableDuration }}</p>
+  </div>
 
-  <form [formGroup]="appointmentForm" (ngSubmit)="onSubmit()">
-    <!-- Duration -->
-    <div class="form-group">
-      <label for="duration">Duration (minutes)</label>
-      <select id="duration" formControlName="duration" class="form-control">
-        <option *ngFor="let duration of getDurationOptions()" [value]="duration">
-          {{ duration }} minutes
-        </option>
-      </select>
-      <div class="error-message" *ngIf="duration?.errors?.['required'] && duration?.touched">
-        Duration is required
-      </div>
+  <div class="form-group">
+    <label for="patientName">Imię i nazwisko pacjenta</label>
+    <input id="patientName" type="text" formControlName="patientName" class="form-control">
+    <div class="error-message" *ngIf="appointmentForm.get('patientName')?.errors?.['required'] && appointmentForm.get('patientName')?.touched">
+      Imię i nazwisko jest wymagane
     </div>
+    <div class="error-message" *ngIf="appointmentForm.get('patientName')?.errors?.['minlength'] && appointmentForm.get('patientName')?.touched">
+      Imię i nazwisko musi mieć co najmniej 3 znaki
+    </div>
+  </div>
 
-    <!-- Consultation Type -->
-    <div class="form-group">
-      <label for="consultationType">Type of Consultation</label>
-      <select id="consultationType" formControlName="consultationType" class="form-control">
-        <option *ngFor="let type of consultationTypes" [value]="type">
-          {{ type }}
-        </option>
-      </select>
-      <div class="error-message" *ngIf="consultationType?.errors?.['required'] && consultationType?.touched">
-        Consultation type is required
-      </div>
+  <div class="form-group">
+    <label for="patientAge">Wiek pacjenta</label>
+    <input id="patientAge" type="number" formControlName="patientAge" class="form-control">
+    <div class="error-message" *ngIf="appointmentForm.get('patientAge')?.errors?.['required'] && appointmentForm.get('patientAge')?.touched">
+      Wiek jest wymagany
     </div>
+    <div class="error-message" *ngIf="appointmentForm.get('patientAge')?.errors?.['min'] || appointmentForm.get('patientAge')?.errors?.['max']">
+      Wiek musi być między 0 a 150 lat
+    </div>
+  </div>
 
-    <!-- Patient Name -->
-    <div class="form-group">
-      <label for="patientName">Full Name</label>
-      <input
-        type="text"
-        id="patientName"
-        formControlName="patientName"
-        class="form-control"
-        placeholder="Enter your full name"
-      >
-      <div class="error-message" *ngIf="patientName?.errors?.['required'] && patientName?.touched">
-        Name is required
-      </div>
-      <div class="error-message" *ngIf="patientName?.errors?.['minlength'] && patientName?.touched">
-        Name must be at least 3 characters long
-      </div>
+  <div class="form-group">
+    <label for="patientGender">Płeć pacjenta</label>
+    <select id="patientGender" formControlName="patientGender" class="form-control">
+      <option value="">Wybierz płeć</option>
+      <option value="M">Mężczyzna</option>
+      <option value="F">Kobieta</option>
+      <option value="O">Inna</option>
+    </select>
+    <div class="error-message" *ngIf="appointmentForm.get('patientGender')?.errors?.['required'] && appointmentForm.get('patientGender')?.touched">
+      Płeć jest wymagana
     </div>
+  </div>
 
-    <!-- Patient Gender -->
-    <div class="form-group">
-      <label for="patientGender">Gender</label>
-      <select id="patientGender" formControlName="patientGender" class="form-control">
-        <option value="">Select gender</option>
-        <option value="male">Male</option>
-        <option value="female">Female</option>
-        <option value="other">Other</option>
-      </select>
-      <div class="error-message" *ngIf="patientGender?.errors?.['required'] && patientGender?.touched">
-        Gender is required
-      </div>
-    </div>
+  <div class="form-group">
+    <label for="consultationType">Typ wizyty</label>
+    <select id="consultationType" formControlName="consultationType" class="form-control">
+      <option *ngFor="let type of consultationTypes" [value]="type">
+        {{ type }}
+      </option>
+    </select>
+  </div>
 
-    <!-- Patient Age -->
-    <div class="form-group">
-      <label for="patientAge">Age</label>
-      <input
-        type="number"
-        id="patientAge"
-        formControlName="patientAge"
-        class="form-control"
-        placeholder="Enter your age"
-      >
-      <div class="error-message" *ngIf="patientAge?.errors?.['required'] && patientAge?.touched">
-        Age is required
-      </div>
-      <div class="error-message" *ngIf="patientAge?.errors?.['min'] || patientAge?.errors?.['max']">
-        Age must be between 0 and 150
-      </div>
+  <div class="form-group">
+    <label for="duration">Czas trwania (minuty)</label>
+    <select id="duration" formControlName="duration" class="form-control">
+      <option *ngFor="let duration of [30, 60, 90, 120, 150, 180]" 
+              [value]="duration"
+              [disabled]="duration > maxDuration">
+        {{ duration }} minut
+      </option>
+    </select>
+    <div class="error-message" *ngIf="appointmentForm.get('duration')?.errors?.['max']">
+      Maksymalny dostępny czas to {{ maxDuration }} minut
     </div>
+  </div>
 
-    <!-- Additional Notes -->
-    <div class="form-group">
-      <label for="notes">Additional Notes</label>
-      <textarea
-        id="notes"
-        formControlName="notes"
-        class="form-control"
-        rows="3"
-        placeholder="Any additional information for the doctor">
-      </textarea>
-    </div>
+  <div class="form-group">
+    <label for="notes">Dodatkowe uwagi</label>
+    <textarea id="notes" formControlName="notes" class="form-control" rows="3"></textarea>
+  </div>
 
-    <!-- Form Actions -->
-    <div class="form-actions">
-      <button type="submit" class="btn btn-primary" [disabled]="!appointmentForm.valid">
-        Book Appointment
-      </button>
-      <button type="button" class="btn btn-secondary" (click)="onCancel()">
-        Cancel
-      </button>
-    </div>
-  </form>
-</div>
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary" [disabled]="!appointmentForm.valid">
+      Umów wizytę
+    </button>
+    <button type="button" class="btn btn-secondary" (click)="onCancel()">
+      Anuluj
+    </button>
+  </div>
+</form>
