@@ -70,11 +70,11 @@ export class AvailabilityComponent implements OnInit {
     if (this.selectedType === AvailabilityType.RECURRING) {
       weekDaysArray?.setValidators([Validators.required, Validators.minLength(1)]);
       timeSlots?.setValidators([Validators.required, Validators.minLength(1)]);
-    } else if (this.selectedType === AvailabilityType.ONE_TIME || 
-               this.selectedType === AvailabilityType.ABSENCE) {
+    } else if (this.selectedType === AvailabilityType.ONE_TIME) {
       startTime?.setValidators([Validators.required]);
       endTime?.setValidators([Validators.required]);
     }
+    // Dla ABSENCE nie ustawiamy walidatorów dla startTime i endTime
 
     // Update validity
     weekDaysArray?.updateValueAndValidity();
@@ -156,10 +156,15 @@ export class AvailabilityComponent implements OnInit {
       if (this.selectedType === AvailabilityType.RECURRING) {
         availability.weekDays = formValue.weekDaysArray;
         availability.timeSlots = formValue.timeSlots;
-      } else {
+      } else if (this.selectedType === AvailabilityType.ONE_TIME) {
         availability.timeSlots = [{
           start: formValue.startTime,
           end: formValue.endTime
+        }];
+      } else if (this.selectedType === AvailabilityType.ABSENCE) {
+        availability.timeSlots = [{
+          start: '06:00',
+          end: '20:00'
         }];
       }
 

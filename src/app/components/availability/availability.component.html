@@ -107,7 +107,7 @@
     </ng-container>
 
     <!-- Sekcja dla dostępności jednorazowej i nieobecności -->
-    <ng-container *ngIf="selectedType !== availabilityTypes.RECURRING">
+    <ng-container *ngIf="selectedType === availabilityTypes.ONE_TIME">
       <div class="time-range">
         <div class="form-group">
           <label for="startTime">Godzina początkowa</label>
@@ -138,7 +138,10 @@
         </div>
       </div>
     </ng-container>
+    <!-- Informacja o stałych godzinach dla nieobecności -->
+    <ng-container *ngIf="selectedType === availabilityTypes.ABSENCE">
 
+    </ng-container>
     <div class="form-actions">
       <button type="submit" [disabled]="!availabilityForm.valid" class="btn-submit">
         <ng-container [ngSwitch]="selectedType">
