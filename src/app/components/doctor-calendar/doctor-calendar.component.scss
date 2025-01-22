@@ -201,29 +201,23 @@
           }
 
           .cal-hour-segment {
-            &.absence-time {
-              background-color: rgba(244, 67, 54, 0.1) !important;
+            &.available {
+              background-color: rgba(76, 175, 80, 0.3) !important;
+              cursor: pointer;
 
               &:hover {
-                background-color: rgba(244, 67, 54, 0.2) !important;
+                background-color: rgba(76, 175, 80, 0.4) !important;
               }
             }
 
             &.past-time {
-              background-color: rgba(158, 158, 158, 0.1) !important;
-
-              &:hover {
-                background-color: rgba(158, 158, 158, 0.2) !important;
-              }
+              background-color: rgba(189, 189, 189, 0.3) !important;
+              cursor: not-allowed;
             }
 
-            &.available {
-              background-color: rgba(33, 150, 243, 0.05) !important;
-              cursor: pointer;
-
-              &:hover {
-                background-color: rgba(33, 150, 243, 0.2) !important;
-              }
+            &.absence-time {
+              background-color: rgba(244, 67, 54, 0.1) !important;
+              cursor: not-allowed;
             }
           }
         }
