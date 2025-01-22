@@ -88,28 +88,31 @@ export class DoctorCalendarComponent implements OnInit, OnDestroy {
   }
 
   beforeWeekViewRender(event: CalendarWeekViewBeforeRenderEvent): void {
-    // Dodaj licznik konsultacji do nagłówków
-    event.header.forEach(day => {
-      const appointmentsForDay = this.getAppointmentCount(day.date);
-
-      if (appointmentsForDay > 0) {
-        day.cssClass = `has-appointments appointments-${appointmentsForDay}`;
-      }
-    });
-
-    // Obsłuż dostępność w kolumnach
     event.hourColumns.forEach(hourColumn => {
+      const date = hourColumn.date;
+      const isDuringAbsence = this.isTimeSlotDuringAbsence(date);
+      
       hourColumn.hours.forEach(hour => {
         hour.segments.forEach(segment => {
-          const segmentDate = segment.date;
-          const isAvailable = this.isTimeSlotWithinAvailability(segmentDate);
-          const isUnavailable = this.isTimeSlotDuringAbsence(segmentDate);
-
-          if (isAvailable) {
-            segment.cssClass = 'available';
-          } else if (isUnavailable) {
-            segment.cssClass = 'unavailable';
+          let classes = [];
+          
+          // Sprawdź czy segment jest w przeszłości
+          if (segment.date < new Date()) {
+            classes.push('past-time');
           }
+          // Sprawdź czy segment jest w czasie nieobecności
+          else if (isDuringAbsence) {
+            classes.push('absence-time');
+          }
+          // Sprawdź dostępność
+          else {
+            const isAvailable = this.isTimeSlotWithinAvailability(segment.date);
+            if (isAvailable) {
+              classes.push('available');
+            }
+          }
+
+          segment.cssClass = classes.join(' ');
         });
       });
     });
@@ -154,7 +157,28 @@ export class DoctorCalendarComponent implements OnInit, OnDestroy {
   }
 
   handleSlotClick(event: { date: Date }) {
-    this.selectedSlot = event.date;
+    const clickedDate = event.date;
+    
+    // Sprawdź czy slot nie przypada na okres nieobecności
+    if (this.isTimeSlotDuringAbsence(clickedDate)) {
+      // Możemy dodać powiadomienie dla użytkownika
+      alert('Nie można zarezerwować wizyty w tym terminie - lekarz jest nieobecny.');
+      return;
+    }
+
+    // Sprawdź czy slot jest w dozwolonym zakresie czasowym
+    if (!this.isTimeSlotWithinAvailability(clickedDate)) {
+      alert('Lekarz nie przyjmuje w tym terminie.');
+      return;
+    }
+
+    // Sprawdź czy slot nie jest w przeszłości
+    if (clickedDate < new Date()) {
+      alert('Nie można zarezerwować wizyty w przeszłości.');
+      return;
+    }
+
+    this.selectedSlot = clickedDate;
     this.showAppointmentForm = true;
   }
 
@@ -246,28 +270,11 @@ export class DoctorCalendarComponent implements OnInit, OnDestroy {
         return false;
       }
 
-      const availabilityStart = new Date(availability.startDate);
-      const availabilityEnd = new Date(availability.endDate);
-      const timeDate = startOfDay(time);
+      const availabilityStart = startOfDay(new Date(availability.startDate));
+      const availabilityEnd = endOfDay(new Date(availability.endDate));
+      const timeDate = new Date(time);
 
-      // Sprawdź czy data jest w zakresie nieobecności
-      if (timeDate < startOfDay(availabilityStart) || timeDate > startOfDay(availabilityEnd)) {
-        return false;
-      }
-
-      // Sprawdź czy czas mieści się w przedziale godzinowym
-      return availability.timeSlots?.some(slot => {
-        const [startHour, startMinute] = slot.start.split(':').map(Number);
-        const [endHour, endMinute] = slot.end.split(':').map(Number);
-
-        const slotStart = new Date(time);
-        slotStart.setHours(startHour, startMinute, 0);
-
-        const slotEnd = new Date(time);
-        slotEnd.setHours(endHour, endMinute, 0);
-
-        return time >= slotStart && time < slotEnd;
-      }) || false;
+      return timeDate >= availabilityStart && timeDate <= availabilityEnd;
     });
   }
 }

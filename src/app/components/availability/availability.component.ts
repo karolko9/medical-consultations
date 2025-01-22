@@ -2,6 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, FormArray, Validators } from '@angular/forms';
 import { DoctorAvailability, AvailabilityType, TimeSlot } from '../../models/availability.model';
 import { AvailabilityService } from '../../services/availability.service';
+import { AppointmentService } from '../../services/appointment.service';
+import { CartService } from '../../services/cart.service';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { firstValueFrom } from 'rxjs';
@@ -21,7 +23,9 @@ export class AvailabilityComponent implements OnInit {
 
   constructor(
     private fb: FormBuilder,
-    private availabilityService: AvailabilityService
+    private availabilityService: AvailabilityService,
+    private appointmentService: AppointmentService,
+    private cartService: CartService
   ) {
     this.createForm();
   }
@@ -169,7 +173,48 @@ export class AvailabilityComponent implements OnInit {
       }
 
       try {
+        // Dodaj nieobecność
         await firstValueFrom(this.availabilityService.addAvailability(availability));
+        
+        // Jeśli to nieobecność, usuń wszystkie wizyty w tym okresie
+        if (this.selectedType === AvailabilityType.ABSENCE) {
+          // Pobierz wizyty z kalendarza
+          const appointments = await firstValueFrom(this.appointmentService.getAppointments());
+          const appointmentsToCancel = appointments.filter(appointment => {
+            const appointmentStart = new Date(appointment.start);
+            return appointmentStart >= availability.startDate && 
+                   appointmentStart <= availability.endDate;
+          });
+
+          // Pobierz wizyty z koszyka
+          const cartItems = await firstValueFrom(this.cartService.getCartItems());
+          const cartItemsToRemove = cartItems.filter(cartItem => {
+            const appointmentStart = new Date(cartItem.appointment.start);
+            return appointmentStart >= availability.startDate && 
+                   appointmentStart <= availability.endDate;
+          });
+
+          // Usuń wizyty z kalendarza
+          for (const appointment of appointmentsToCancel) {
+            if (appointment.id) {
+              await firstValueFrom(this.appointmentService.cancelAppointment(appointment.id));
+            }
+          }
+
+          // Usuń wizyty z koszyka
+          for (const cartItem of cartItemsToRemove) {
+            if (cartItem.appointment.id) {
+              this.cartService.removeFromCart(cartItem.appointment.id);
+            }
+          }
+
+          // Pokaż informację o usuniętych wizytach
+          const totalRemoved = appointmentsToCancel.length + cartItemsToRemove.length;
+          if (totalRemoved > 0) {
+            alert(`Usunięto ${totalRemoved} wizyt w okresie nieobecności (${appointmentsToCancel.length} z kalendarza, ${cartItemsToRemove.length} z koszyka).`);
+          }
+        }
+
         this.resetForm();
         this.loadAvailabilities();
       } catch (error) {

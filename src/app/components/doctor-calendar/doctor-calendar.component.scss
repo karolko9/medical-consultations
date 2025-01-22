@@ -174,7 +174,6 @@
         .cal-hour-segment {
           background-color: inherit !important;
           border-left: none !important;
-          cursor: default !important;
 
           &.available, &.unavailable {
             background-color: inherit !important;
@@ -186,14 +185,55 @@
           }
         }
       }
+
+      .cal-day-columns {
+        .cal-day-column {
+          &.absence-day {
+            background-color: rgba(244, 67, 54, 0.1);
+            
+            .cal-hour {
+              background-color: rgba(244, 67, 54, 0.05);
+              
+              &:nth-child(odd) {
+                background-color: rgba(244, 67, 54, 0.1);
+              }
+            }
+          }
+
+          .cal-hour-segment {
+            &.absence-time {
+              background-color: rgba(244, 67, 54, 0.1) !important;
+
+              &:hover {
+                background-color: rgba(244, 67, 54, 0.2) !important;
+              }
+            }
+
+            &.past-time {
+              background-color: rgba(158, 158, 158, 0.1) !important;
+
+              &:hover {
+                background-color: rgba(158, 158, 158, 0.2) !important;
+              }
+            }
+
+            &.available {
+              background-color: rgba(33, 150, 243, 0.05) !important;
+              cursor: pointer;
+
+              &:hover {
+                background-color: rgba(33, 150, 243, 0.2) !important;
+              }
+            }
+          }
+        }
+      }
     }
   }
 
   // Style dla segmentów w pozostałych kolumnach
   .cal-hour-segment {
     position: relative;
-    cursor: pointer;
-    transition: background-color 0.2s;
 
     &.available {
       background-color: rgba(40, 167, 69, 0.1) !important;
@@ -207,7 +247,6 @@
     &.unavailable {
       background-color: rgba(220, 53, 69, 0.1) !important;
       border-left: 3px solid #dc3545 !important;
-      cursor: not-allowed;
 
       &:hover {
         background-color: rgba(220, 53, 69, 0.2) !important;
