@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormBuilder, FormGroup, FormArray, Validators } from '@angular/forms';
 import { DoctorAvailability, AvailabilityType, TimeSlot } from '../../models/availability.model';
 import { AvailabilityService } from '../../services/availability.service';
@@ -6,20 +6,21 @@ import { AppointmentService } from '../../services/appointment.service';
 import { CartService } from '../../services/cart.service';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-availability',
   templateUrl: './availability.component.html',
   styleUrls: ['./availability.component.scss']
 })
-export class AvailabilityComponent implements OnInit {
+export class AvailabilityComponent implements OnInit, OnDestroy {
   availabilityForm!: FormGroup;
   selectedType: AvailabilityType = AvailabilityType.RECURRING;
   weekDays: string[] = ['Niedziela', 'Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek', 'Sobota'];
   availabilities: DoctorAvailability[] = [];
   availabilityTypes = AvailabilityType;
   today = new Date().toISOString().split('T')[0];
+  private availabilitiesSubscription?: Subscription;
 
   constructor(
     private fb: FormBuilder,
@@ -32,6 +33,12 @@ export class AvailabilityComponent implements OnInit {
 
   ngOnInit() {
     this.loadAvailabilities();
+  }
+
+  ngOnDestroy() {
+    if (this.availabilitiesSubscription) {
+      this.availabilitiesSubscription.unsubscribe();
+    }
   }
 
   createForm() {
@@ -49,76 +56,59 @@ export class AvailabilityComponent implements OnInit {
       this.addTimeSlot();
     }
 
-    // Update validators based on type
-    this.updateFormValidators();
+    // Initialize weekDaysArray with checkboxes
+    this.weekDays.forEach(() => {
+      (this.availabilityForm.get('weekDaysArray') as FormArray).push(this.fb.control(false));
+    });
   }
 
-  selectType(type: AvailabilityType) {
-    this.selectedType = type;
-    this.resetForm();
-    this.updateFormValidators();
+  loadAvailabilities() {
+    this.availabilitiesSubscription = this.availabilityService.getAvailabilities()
+      .subscribe(availabilities => {
+        this.availabilities = availabilities;
+      });
   }
 
-  updateFormValidators() {
-    const weekDaysArray = this.availabilityForm.get('weekDaysArray');
-    const timeSlots = this.availabilityForm.get('timeSlots');
-    const startTime = this.availabilityForm.get('startTime');
-    const endTime = this.availabilityForm.get('endTime');
+  async onSubmit() {
+    if (this.availabilityForm.valid) {
+      const formValue = this.availabilityForm.value;
+      
+      // Create availability object
+      const availability: DoctorAvailability = {
+        type: this.selectedType,
+        startDate: formValue.startDate,  // Send as string
+        endDate: formValue.endDate,      // Send as string
+        weekDays: this.selectedType === AvailabilityType.RECURRING 
+          ? formValue.weekDaysArray
+            .map((checked: boolean, index: number) => checked ? index : -1)
+            .filter((day: number) => day !== -1)
+          : [],
+        timeSlots: this.selectedType !== AvailabilityType.ABSENCE 
+          ? (this.availabilityForm.get('timeSlots') as FormArray).value
+          : []
+      };
 
-    // Reset validators
-    weekDaysArray?.clearValidators();
-    timeSlots?.clearValidators();
-    startTime?.clearValidators();
-    endTime?.clearValidators();
-
-    if (this.selectedType === AvailabilityType.RECURRING) {
-      weekDaysArray?.setValidators([Validators.required, Validators.minLength(1)]);
-      timeSlots?.setValidators([Validators.required, Validators.minLength(1)]);
-    } else if (this.selectedType === AvailabilityType.ONE_TIME) {
-      startTime?.setValidators([Validators.required]);
-      endTime?.setValidators([Validators.required]);
-    }
-    // Dla ABSENCE nie ustawiamy walidatorów dla startTime i endTime
-
-    // Update validity
-    weekDaysArray?.updateValueAndValidity();
-    timeSlots?.updateValueAndValidity();
-    startTime?.updateValueAndValidity();
-    endTime?.updateValueAndValidity();
-  }
-
-  resetForm() {
-    this.availabilityForm.reset();
-    this.weekDaysArray.clear();
-    this.timeSlots.clear();
-
-    if (this.selectedType === AvailabilityType.RECURRING) {
-      this.addTimeSlot();
+      try {
+        await firstValueFrom(this.availabilityService.addAvailability(availability));
+        this.availabilityForm.reset();
+        this.createForm(); // Reset form with initial structure
+      } catch (error) {
+        console.error('Error adding availability:', error);
+      }
     }
   }
 
-  get timeSlots() {
+  async removeAvailability(id: string) {
+    try {
+      await firstValueFrom(this.availabilityService.removeAvailability(id));
+    } catch (error) {
+      console.error('Error removing availability:', error);
+    }
+  }
+
+  // Form array getters and methods
+  get timeSlotsFormArray() {
     return this.availabilityForm.get('timeSlots') as FormArray;
-  }
-
-  get weekDaysArray() {
-    return this.availabilityForm.get('weekDaysArray') as FormArray;
-  }
-
-  get startDate() {
-    return this.availabilityForm.get('startDate');
-  }
-
-  get endDate() {
-    return this.availabilityForm.get('endDate');
-  }
-
-  get startTime() {
-    return this.availabilityForm.get('startTime');
-  }
-
-  get endTime() {
-    return this.availabilityForm.get('endTime');
   }
 
   addTimeSlot() {
@@ -126,161 +116,65 @@ export class AvailabilityComponent implements OnInit {
       start: ['', Validators.required],
       end: ['', Validators.required]
     });
-
-    this.timeSlots.push(timeSlot);
+    this.timeSlotsFormArray.push(timeSlot);
   }
 
   removeTimeSlot(index: number) {
-    this.timeSlots.removeAt(index);
+    this.timeSlotsFormArray.removeAt(index);
   }
 
-  isWeekdaySelected(dayIndex: number): boolean {
-    return this.weekDaysArray.value.includes(dayIndex);
-  }
-
-  toggleWeekday(dayIndex: number) {
-    const index = this.weekDaysArray.value.indexOf(dayIndex);
-    if (index === -1) {
-      this.weekDaysArray.push(this.fb.control(dayIndex));
-    } else {
-      this.weekDaysArray.removeAt(index);
+  onTypeChange(type: AvailabilityType) {
+    this.selectedType = type;
+    
+    // Clear time slots
+    while (this.timeSlotsFormArray.length) {
+      this.timeSlotsFormArray.removeAt(0);
+    }
+    
+    // Add default time slot for recurring and one-time availabilities
+    if (type !== AvailabilityType.ABSENCE) {
+      this.addTimeSlot();
     }
   }
 
-  async onSubmit() {
-    if (this.availabilityForm.valid) {
-      const formValue = this.availabilityForm.value;
-      let availability: DoctorAvailability = {
-        startDate: new Date(formValue.startDate),
-        endDate: new Date(formValue.endDate),
-        type: this.selectedType,
-        timeSlots: []
-      };
-
-      if (this.selectedType === AvailabilityType.RECURRING) {
-        availability.weekDays = formValue.weekDaysArray;
-        availability.timeSlots = formValue.timeSlots;
-      } else if (this.selectedType === AvailabilityType.ONE_TIME) {
-        availability.timeSlots = [{
-          start: formValue.startTime,
-          end: formValue.endTime
-        }];
-      } else if (this.selectedType === AvailabilityType.ABSENCE) {
-        availability.timeSlots = [{
-          start: '06:00',
-          end: '20:00'
-        }];
-      }
-
-      try {
-        // Dodaj nieobecność
-        await firstValueFrom(this.availabilityService.addAvailability(availability));
-        
-        // Jeśli to nieobecność, usuń wszystkie wizyty w tym okresie
-        if (this.selectedType === AvailabilityType.ABSENCE) {
-          // Pobierz wizyty z kalendarza
-          const appointments = await firstValueFrom(this.appointmentService.getAppointments());
-          const appointmentsToCancel = appointments.filter(appointment => {
-            const appointmentStart = new Date(appointment.start);
-            return appointmentStart >= availability.startDate && 
-                   appointmentStart <= availability.endDate;
-          });
-
-          // Pobierz wizyty z koszyka
-          const cartItems = await firstValueFrom(this.cartService.getCartItems());
-          const cartItemsToRemove = cartItems.filter(cartItem => {
-            const appointmentStart = new Date(cartItem.appointment.start);
-            return appointmentStart >= availability.startDate && 
-                   appointmentStart <= availability.endDate;
-          });
-
-          // Usuń wizyty z kalendarza
-          for (const appointment of appointmentsToCancel) {
-            if (appointment.id) {
-              await firstValueFrom(this.appointmentService.cancelAppointment(appointment.id));
-            }
-          }
-
-          // Usuń wizyty z koszyka
-          for (const cartItem of cartItemsToRemove) {
-            if (cartItem.appointment.id) {
-              this.cartService.removeFromCart(cartItem.appointment.id);
-            }
-          }
-
-          // Pokaż informację o usuniętych wizytach
-          const totalRemoved = appointmentsToCancel.length + cartItemsToRemove.length;
-          if (totalRemoved > 0) {
-            alert(`Usunięto ${totalRemoved} wizyt w okresie nieobecności (${appointmentsToCancel.length} z kalendarza, ${cartItemsToRemove.length} z koszyka).`);
-          }
-        }
-
-        this.resetForm();
-        this.loadAvailabilities();
-      } catch (error) {
-        console.error('Error adding availability:', error);
-      }
-    }
-  }
-
-  async loadAvailabilities() {
+  formatDate(date: Date | string | null): string {
+    if (!date) return 'No date';
+    
     try {
-      const availabilities = await firstValueFrom(this.availabilityService.getAvailabilities());
-      this.availabilities = availabilities;
-    } catch (error) {
-      console.error('Error loading availabilities:', error);
-    }
-  }
-
-  async deleteAvailability(availability: DoctorAvailability) {
-    if (availability.id) {
-      try {
-        await firstValueFrom(this.availabilityService.removeAvailability(availability.id));
-        // Odśwież listę dostępności
-        await this.loadAvailabilities();
-      } catch (error) {
-        console.error('Error deleting availability:', error);
+      let dateObj: Date;
+      
+      if (typeof date === 'string') {
+        // Handle Firebase timestamp format
+        if (date.hasOwnProperty('seconds')) {
+          const timestamp = (date as any).seconds * 1000;
+          dateObj = new Date(timestamp);
+        } else {
+          dateObj = new Date(date);
+        }
+      } else {
+        dateObj = date;
       }
+
+      if (isNaN(dateObj.getTime())) {
+        console.error('Invalid date object:', date);
+        return 'Invalid date';
+      }
+
+      return format(dateObj, 'dd MMMM yyyy', { locale: pl });
+    } catch (error) {
+      console.error('Error formatting date:', error, 'Date value:', date);
+      return 'Invalid date';
     }
   }
 
-  getTypeLabel(type: AvailabilityType): string {
-    switch (type) {
-      case AvailabilityType.RECURRING:
-        return 'Cykliczna dostępność';
-      case AvailabilityType.ONE_TIME:
-        return 'Jednorazowa dostępność';
-      case AvailabilityType.ABSENCE:
-        return 'Nieobecność';
-      default:
-        return '';
-    }
+  formatTime(time: string): string {
+    return time;
   }
 
-  getItemClass(item: DoctorAvailability): string {
-    switch (item.type) {
-      case AvailabilityType.RECURRING:
-        return 'recurring';
-      case AvailabilityType.ONE_TIME:
-        return 'one-time';
-      case AvailabilityType.ABSENCE:
-        return 'absence';
-      default:
-        return '';
-    }
-  }
-
-  formatDate(date: Date): string {
-    return format(new Date(date), 'dd MMMM yyyy', { locale: pl });
-  }
-
-  formatWeekDays(weekDays: number[] | undefined): string {
-    if (!weekDays) return '';
-    return weekDays.map(day => this.weekDays[day]).join(', ');
-  }
-
-  formatTimeSlots(timeSlots: TimeSlot[] | undefined): string {
-    if (!timeSlots) return '';
-    return timeSlots.map(slot => `${slot.start} - ${slot.end}`).join(', ');
+  getSelectedDays(): string {
+    const selectedDays = this.availabilityForm.value.weekDaysArray
+      .map((checked: boolean, index: number) => checked ? this.weekDays[index] : null)
+      .filter((day: string | null) => day !== null);
+    return selectedDays.join(', ');
   }
 }

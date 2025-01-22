@@ -13,6 +13,9 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { ReservationCartComponent } from './components/reservation-cart/reservation-cart.component';
 import { CartPageComponent } from './pages/cart-page/cart-page.component';
+import { environment } from '../environments/environment';
+import { provideFirebaseApp, initializeApp } from '@angular/fire/app';
+import { getDatabase, provideDatabase } from '@angular/fire/database';
 
 @NgModule({
   declarations: [
@@ -35,6 +38,8 @@ import { CartPageComponent } from './pages/cart-page/cart-page.component';
       provide: DateAdapter,
       useFactory: adapterFactory,
     }),
+    provideFirebaseApp(() => initializeApp(environment.firebaseConfig)),
+    provideDatabase(() => getDatabase())
   ],
   providers: [],
   bootstrap: [AppComponent]

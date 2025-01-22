@@ -4,6 +4,7 @@ import { addMinutes } from 'date-fns';
 import { Appointment, ConsultationType, AppointmentStatus } from '../../models/appointment.model';
 import { AppointmentService } from '../../services/appointment.service';
 import { CartService } from '../../services/cart.service';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-appointment-form',
@@ -18,6 +19,7 @@ export class AppointmentFormComponent implements OnInit {
   appointmentForm: FormGroup;
   consultationTypes = Object.values(ConsultationType);
   maxDuration = 180; // 3 hours
+  isSubmitting = false;
 
   constructor(
     private fb: FormBuilder,
@@ -42,35 +44,39 @@ export class AppointmentFormComponent implements OnInit {
     ]);
   }
 
-  onSubmit() {
-    if (this.appointmentForm.valid) {
-      const formValue = this.appointmentForm.value;
-      const end = addMinutes(this.selectedDate, formValue.duration);
-      
-      const appointment: Appointment = {
-        start: this.selectedDate,
-        end: end,
-        duration: formValue.duration,
-        title: `${formValue.consultationType}: ${formValue.patientName}`,
-        patientName: formValue.patientName,
-        patientGender: formValue.patientGender,
-        patientAge: formValue.patientAge,
-        consultationType: formValue.consultationType,
-        additionalInfo: formValue.additionalInfo,
-        status: AppointmentStatus.PENDING
-      };
+  async onSubmit() {
+    if (this.appointmentForm.valid && !this.isSubmitting) {
+      this.isSubmitting = true;
 
-      this.appointmentService.addAppointment(appointment).subscribe(
-        savedAppointment => {
-          this.cartService.addToCart(savedAppointment);
-          this.appointmentCreated.emit();
-          this.closeForm.emit();
-        },
-        error => {
-          console.error('Error creating appointment:', error);
-          alert('Nie udało się utworzyć wizyty. Spróbuj ponownie.');
-        }
-      );
+      try {
+        const formValue = this.appointmentForm.value;
+        const end = addMinutes(this.selectedDate, formValue.duration);
+        
+        const appointment: Appointment = {
+          start: this.selectedDate,
+          end: end,
+          duration: formValue.duration,
+          title: `${formValue.consultationType}: ${formValue.patientName}`,
+          patientName: formValue.patientName,
+          patientGender: formValue.patientGender,
+          patientAge: formValue.patientAge,
+          consultationType: formValue.consultationType,
+          additionalInfo: formValue.additionalInfo,
+          status: AppointmentStatus.PENDING
+        };
+
+        // Używamy firstValueFrom aby przekonwertować Observable na Promise
+        const savedAppointment = await firstValueFrom(this.appointmentService.addAppointment(appointment));
+        await this.cartService.addToCart(savedAppointment);
+        
+        this.appointmentCreated.emit();
+        this.closeForm.emit();
+      } catch (error) {
+        console.error('Error creating appointment:', error);
+        alert('Nie udało się utworzyć wizyty. Spróbuj ponownie.');
+      } finally {
+        this.isSubmitting = false;
+      }
     }
   }
 

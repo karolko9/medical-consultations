@@ -1,8 +1,10 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { Appointment, ConsultationType } from '../models/appointment.model';
+import { Database, ref, set, push, remove, onValue } from '@angular/fire/database';
 
 export interface CartItem {
+  id?: string;
   appointment: Appointment;
   price: number;
 }
@@ -13,25 +15,78 @@ export interface CartItem {
 export class CartService {
   private cartItems = new BehaviorSubject<CartItem[]>([]);
   
-  constructor() {}
+  constructor(private db: Database) {
+    this.loadCartFromFirebase();
+  }
+
+  private loadCartFromFirebase(): void {
+    console.log('Loading cart from Firebase...');
+    const cartRef = ref(this.db, 'cart');
+    onValue(cartRef, (snapshot) => {
+      console.log('Raw Firebase data:', snapshot.val());
+      const data = snapshot.val();
+      const items: CartItem[] = [];
+      if (data) {
+        Object.keys(data).forEach(key => {
+          const item = data[key];
+          console.log('Processing item:', item);
+          items.push({
+            ...item,
+            id: key,
+            appointment: {
+              ...item.appointment,
+              start: new Date(item.appointment.start),
+              end: new Date(item.appointment.end)
+            }
+          });
+        });
+      }
+      console.log('Processed cart items:', items);
+      this.cartItems.next(items);
+    });
+  }
 
   getCartItems(): Observable<CartItem[]> {
     return this.cartItems.asObservable();
   }
 
-  addToCart(appointment: Appointment): void {
+  async addToCart(appointment: Appointment): Promise<void> {
+    console.log('Adding to cart:', appointment);
+    if (!appointment.id) {
+      throw new Error('Appointment must have an ID before adding to cart');
+    }
     const price = this.calculatePrice(appointment);
-    const currentItems = this.cartItems.value;
-    this.cartItems.next([...currentItems, { appointment, price }]);
+    const cartRef = ref(this.db, 'cart');
+    const newItem: CartItem = {
+      appointment: {
+        ...appointment,
+        start: appointment.start instanceof Date ? appointment.start.toISOString() : appointment.start,
+        end: appointment.end instanceof Date ? appointment.end.toISOString() : appointment.end
+      },
+      price
+    };
+    console.log('Saving item to Firebase:', newItem);
+    try {
+      await push(cartRef, newItem);
+      console.log('Successfully saved to Firebase');
+    } catch (error) {
+      console.error('Error saving to Firebase:', error);
+      throw error;
+    }
   }
 
-  removeFromCart(appointmentId: string): void {
+  async removeFromCart(appointmentId: string): Promise<void> {
     const currentItems = this.cartItems.value;
-    this.cartItems.next(currentItems.filter(item => item.appointment.id !== appointmentId));
+    const itemToRemove = currentItems.find(item => item.appointment.id === appointmentId);
+    if (itemToRemove && itemToRemove.id) {
+      const cartItemRef = ref(this.db, `cart/${itemToRemove.id}`);
+      await remove(cartItemRef);
+    }
   }
 
-  clearCart(): void {
-    this.cartItems.next([]);
+  async clearCart(): Promise<void> {
+    const cartRef = ref(this.db, 'cart');
+    await remove(cartRef);
   }
 
   getTotalPrice(): number {
@@ -39,9 +94,10 @@ export class CartService {
   }
 
   private calculatePrice(appointment: Appointment): number {
-    // Przykładowa logika obliczania ceny
     const basePrice = 100; // Podstawowa cena wizyty
-    const durationInHours = (appointment.end.getTime() - appointment.start.getTime()) / (1000 * 60 * 60);
+    const start = appointment.start instanceof Date ? appointment.start : new Date(appointment.start);
+    const end = appointment.end instanceof Date ? appointment.end : new Date(appointment.end);
+    const durationInHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
     
     let price = basePrice * durationInHours;
 
@@ -53,11 +109,14 @@ export class CartService {
       case ConsultationType.FOLLOW_UP:
         price *= 1.2; // +20% za wizytę kontrolną
         break;
+      case ConsultationType.CONSULTATION:
+        // Standardowa cena
+        break;
       case ConsultationType.PRESCRIPTION:
         price *= 0.8; // -20% za receptę
         break;
     }
 
-    return Math.round(price); // Zaokrąglamy do pełnych złotych
+    return price;
   }
 }

@@ -1,89 +1,140 @@
 import { Injectable } from '@angular/core';
-import { Observable, of } from 'rxjs';
+import { Observable } from 'rxjs';
 import { DoctorAvailability } from '../models/availability.model';
+import { Database, ref, set, push, remove, onValue } from '@angular/fire/database';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AvailabilityService {
-  private availabilities: DoctorAvailability[] = [];
-  private nextId = 1;
-
-  constructor() {}
+  constructor(private db: Database) {}
 
   getAvailabilities(): Observable<DoctorAvailability[]> {
-    return of(this.availabilities);
-  }
-
-  addAvailability(availability: DoctorAvailability): Observable<void> {
-    availability.id = this.nextId.toString();
-    this.nextId++;
-    this.availabilities.push(availability);
-    return of(void 0);
-  }
-
-  removeAvailability(id: string): Observable<void> {
-    const index = this.availabilities.findIndex(a => a.id === id);
-    if (index !== -1) {
-      this.availabilities.splice(index, 1);
-    }
-    return of(void 0);
-  }
-
-  isTimeSlotAvailable(date: Date, startTime: string, endTime: string): boolean {
-    const dayOfWeek = date.getDay();
-    const dateString = date.toISOString().split('T')[0];
-
-    return !this.availabilities.some(availability => {
-      // Check if the date is within the availability period
-      const startDate = new Date(availability.startDate);
-      const endDate = new Date(availability.endDate);
-      
-      if (date < startDate || date > endDate) {
-        return false;
-      }
-
-      // For recurring availability, check if it's the right day of the week
-      if (availability.weekDays && !availability.weekDays.includes(dayOfWeek)) {
-        return false;
-      }
-
-      // Check if there's any time slot conflict
-      return availability.timeSlots?.some(slot => {
-        const slotStart = new Date(`${dateString}T${slot.start}`);
-        const slotEnd = new Date(`${dateString}T${slot.end}`);
-        const checkStart = new Date(`${dateString}T${startTime}`);
-        const checkEnd = new Date(`${dateString}T${endTime}`);
-
-        return (
-          (checkStart >= slotStart && checkStart < slotEnd) ||
-          (checkEnd > slotStart && checkEnd <= slotEnd) ||
-          (checkStart <= slotStart && checkEnd >= slotEnd)
-        );
+    return new Observable(subscriber => {
+      const availabilitiesRef = ref(this.db, 'availabilities');
+      onValue(availabilitiesRef, (snapshot) => {
+        const data = snapshot.val();
+        console.log('Raw data from Firebase:', data);
+        const availabilities: DoctorAvailability[] = [];
+        if (data) {
+          Object.keys(data).forEach(key => {
+            const item = data[key];
+            // Convert dates back to proper format
+            const availability: DoctorAvailability = {
+              ...item,
+              id: key,
+              startDate: item.startDate ? item.startDate : null,
+              endDate: item.endDate ? item.endDate : null
+            };
+            console.log('Processed availability:', availability);
+            availabilities.push(availability);
+          });
+        }
+        subscriber.next(availabilities);
       });
     });
   }
 
-  getDoctorAvailabilityForDay(date: Date): { start: string; end: string }[] {
-    const dayOfWeek = date.getDay();
-    const availableSlots: { start: string; end: string }[] = [];
+  addAvailability(availability: DoctorAvailability): Observable<any> {
+    return new Observable(subscriber => {
+      const availabilitiesRef = ref(this.db, 'availabilities');
+      push(availabilitiesRef, availability)
+        .then(() => {
+          subscriber.next();
+          subscriber.complete();
+        })
+        .catch(error => subscriber.error(error));
+    });
+  }
 
-    this.availabilities.forEach(availability => {
-      const startDate = new Date(availability.startDate);
-      const endDate = new Date(availability.endDate);
+  removeAvailability(id: string): Observable<void> {
+    return new Observable(subscriber => {
+      const availabilityRef = ref(this.db, `availabilities/${id}`);
+      remove(availabilityRef)
+        .then(() => {
+          subscriber.next();
+          subscriber.complete();
+        })
+        .catch(error => subscriber.error(error));
+    });
+  }
 
-      if (date >= startDate && date <= endDate) {
-        if (
-          availability.weekDays?.includes(dayOfWeek) ||
-          !availability.weekDays // One-time or absence
-        ) {
-          availability.timeSlots?.forEach(slot => {
-            availableSlots.push(slot);
+  isTimeSlotAvailable(date: Date, startTime: string, endTime: string): Observable<boolean> {
+    return new Observable(subscriber => {
+      const availabilitiesRef = ref(this.db, 'availabilities');
+      onValue(availabilitiesRef, (snapshot) => {
+        const data = snapshot.val();
+        const availabilities: DoctorAvailability[] = [];
+        if (data) {
+          Object.keys(data).forEach(key => {
+            availabilities.push({ ...data[key], id: key });
           });
         }
-      }
-    });
 
-    return availableSlots;
+        const dayOfWeek = date.getDay();
+        const isAvailable = !availabilities.some(availability => {
+          const startDate = new Date(availability.startDate);
+          const endDate = new Date(availability.endDate);
+          
+          if (date < startDate || date > endDate) {
+            return false;
+          }
+
+          if (availability.weekDays && !availability.weekDays.includes(dayOfWeek)) {
+            return false;
+          }
+
+          if (availability.timeSlots) {
+            return availability.timeSlots.some(slot => {
+              return (
+                (startTime >= slot.start && startTime < slot.end) ||
+                (endTime > slot.start && endTime <= slot.end) ||
+                (startTime <= slot.start && endTime >= slot.end)
+              );
+            });
+          }
+
+          return false;
+        });
+
+        subscriber.next(isAvailable);
+      });
+    });
+  }
+
+  getDoctorAvailabilityForDay(date: Date): Observable<{ start: string; end: string }[]> {
+    return new Observable(subscriber => {
+      const availabilitiesRef = ref(this.db, 'availabilities');
+      onValue(availabilitiesRef, (snapshot) => {
+        const data = snapshot.val();
+        const availabilities: DoctorAvailability[] = [];
+        if (data) {
+          Object.keys(data).forEach(key => {
+            availabilities.push({ ...data[key], id: key });
+          });
+        }
+
+        const dayOfWeek = date.getDay();
+        const availableSlots: { start: string; end: string }[] = [];
+
+        availabilities.forEach(availability => {
+          const startDate = new Date(availability.startDate);
+          const endDate = new Date(availability.endDate);
+
+          if (date >= startDate && date <= endDate) {
+            if (
+              availability.weekDays?.includes(dayOfWeek) ||
+              !availability.weekDays // One-time or absence
+            ) {
+              availability.timeSlots?.forEach(slot => {
+                availableSlots.push(slot);
+              });
+            }
+          }
+        });
+
+        subscriber.next(availableSlots);
+      });
+    });
   }
 }

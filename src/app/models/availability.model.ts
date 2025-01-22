@@ -1,10 +1,10 @@
 export interface DoctorAvailability {
   id?: string;
   type: AvailabilityType;
-  startDate: Date;
-  endDate: Date;
-  weekDays?: number[]; // 0-6 for Sunday-Saturday
-  timeSlots?: TimeSlot[];
+  startDate: Date | string;
+  endDate: Date | string;
+  weekDays: number[]; // 0-6 for Sunday-Saturday
+  timeSlots: TimeSlot[];
 }
 
 export interface TimeSlot {

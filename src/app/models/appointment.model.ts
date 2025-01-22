@@ -1,7 +1,7 @@
 export interface Appointment {
   id?: string;
-  start: Date;
-  end: Date;
+  start: Date | string;
+  end: Date | string;
   duration?: number; 
   title?: string;
   patientName: string;

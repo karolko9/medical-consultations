@@ -3,21 +3,21 @@
     <button 
       class="type-btn" 
       [class.active]="selectedType === availabilityTypes.RECURRING"
-      (click)="selectType(availabilityTypes.RECURRING)">
+      (click)="onTypeChange(availabilityTypes.RECURRING)">
       <i class="fas fa-calendar-alt"></i>
       Cykliczna dostępność
     </button>
     <button 
       class="type-btn" 
       [class.active]="selectedType === availabilityTypes.ONE_TIME"
-      (click)="selectType(availabilityTypes.ONE_TIME)">
+      (click)="onTypeChange(availabilityTypes.ONE_TIME)">
       <i class="fas fa-clock"></i>
       Jednorazowa dostępność
     </button>
     <button 
       class="type-btn absence" 
       [class.active]="selectedType === availabilityTypes.ABSENCE"
-      (click)="selectType(availabilityTypes.ABSENCE)">
+      (click)="onTypeChange(availabilityTypes.ABSENCE)">
       <i class="fas fa-ban"></i>
       Nieobecność
     </button>
@@ -33,9 +33,6 @@
           formControlName="startDate"
           class="form-control"
           [min]="today">
-        <div class="error-message" *ngIf="startDate?.errors?.['required'] && startDate?.touched">
-          Data początkowa jest wymagana
-        </div>
       </div>
 
       <div class="form-group">
@@ -45,144 +42,81 @@
           id="endDate" 
           formControlName="endDate"
           class="form-control"
-          [min]="startDate?.value">
-        <div class="error-message" *ngIf="endDate?.errors?.['required'] && endDate?.touched">
-          Data końcowa jest wymagana
+          [min]="availabilityForm.get('startDate')?.value || today">
+      </div>
+    </div>
+
+    <!-- Dni tygodnia dla cyklicznej dostępności -->
+    <div class="weekdays" *ngIf="selectedType === availabilityTypes.RECURRING">
+      <h4>Dni tygodnia</h4>
+      <div class="weekdays-grid" formArrayName="weekDaysArray">
+        <div *ngFor="let day of weekDays; let i = index" class="weekday-item">
+          <label>
+            <input type="checkbox" [formControlName]="i">
+            {{ day }}
+          </label>
         </div>
       </div>
     </div>
 
-    <!-- Sekcja dla dostępności cyklicznej -->
-    <ng-container *ngIf="selectedType === availabilityTypes.RECURRING">
-      <div class="weekdays-section">
-        <label>Dni tygodnia</label>
-        <div class="weekdays-grid">
-          <div *ngFor="let day of weekDays; let i = index" class="weekday-item">
-            <label [for]="'day' + i" class="weekday-label">
-              <input 
-                [id]="'day' + i" 
-                type="checkbox"
-                [checked]="isWeekdaySelected(i)"
-                (change)="toggleWeekday(i)">
-              {{ day }}
-            </label>
-          </div>
-        </div>
-        <div class="error-message" *ngIf="weekDaysArray.errors?.['required'] && weekDaysArray.touched">
-          Wybierz przynajmniej jeden dzień tygodnia
-        </div>
-      </div>
-
-      <div class="time-slots-section" formArrayName="timeSlots">
-        <label>Godziny przyjęć</label>
-        <div *ngFor="let slot of timeSlots.controls; let i = index" [formGroupName]="i" class="time-slot">
+    <!-- Godziny dla cyklicznej i jednorazowej dostępności -->
+    <div class="time-slots" *ngIf="selectedType !== availabilityTypes.ABSENCE" formArrayName="timeSlots">
+      <h4>Godziny przyjęć</h4>
+      <div *ngFor="let slot of timeSlotsFormArray.controls; let i = index" [formGroupName]="i" class="time-slot">
+        <div class="time-inputs">
           <div class="form-group">
-            <label [for]="'startTime' + i">Od</label>
-            <input 
-              [id]="'startTime' + i" 
-              type="time" 
-              formControlName="start"
-              class="form-control"
-              [min]="'08:00'"
-              [max]="'14:00'">
+            <label>Od</label>
+            <input type="time" formControlName="start" class="form-control">
           </div>
           <div class="form-group">
-            <label [for]="'endTime' + i">Do</label>
-            <input 
-              [id]="'endTime' + i" 
-              type="time" 
-              formControlName="end"
-              class="form-control"
-              [min]="slot.get('start')?.value"
-              [max]="'14:00'">
+            <label>Do</label>
+            <input type="time" formControlName="end" class="form-control">
           </div>
-          <button type="button" class="btn-remove" (click)="removeTimeSlot(i)" *ngIf="timeSlots.length > 1">
-            <i class="fas fa-times"></i>
-          </button>
         </div>
-        <button type="button" class="btn-add" (click)="addTimeSlot()">
-          <i class="fas fa-plus"></i> Dodaj przedział czasowy
+        <button type="button" class="remove-slot" (click)="removeTimeSlot(i)" *ngIf="timeSlotsFormArray.length > 1">
+          <i class="fas fa-times"></i>
         </button>
       </div>
-    </ng-container>
-
-    <!-- Sekcja dla dostępności jednorazowej i nieobecności -->
-    <ng-container *ngIf="selectedType === availabilityTypes.ONE_TIME">
-      <div class="time-range">
-        <div class="form-group">
-          <label for="startTime">Godzina początkowa</label>
-          <input 
-            type="time" 
-            id="startTime" 
-            formControlName="startTime"
-            class="form-control"
-            [min]="'08:00'"
-            [max]="'14:00'">
-          <div class="error-message" *ngIf="startTime?.errors?.['required'] && startTime?.touched">
-            Godzina początkowa jest wymagana
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="endTime">Godzina końcowa</label>
-          <input 
-            type="time" 
-            id="endTime" 
-            formControlName="endTime"
-            class="form-control"
-            [min]="startTime?.value"
-            [max]="'14:00'">
-          <div class="error-message" *ngIf="endTime?.errors?.['required'] && endTime?.touched">
-            Godzina końcowa jest wymagana
-          </div>
-        </div>
-      </div>
-    </ng-container>
-    <!-- Informacja o stałych godzinach dla nieobecności -->
-    <ng-container *ngIf="selectedType === availabilityTypes.ABSENCE">
-
-    </ng-container>
-    <div class="form-actions">
-      <button type="submit" [disabled]="!availabilityForm.valid" class="btn-submit">
-        <ng-container [ngSwitch]="selectedType">
-          <ng-container *ngSwitchCase="availabilityTypes.RECURRING">
-            Dodaj cykliczną dostępność
-          </ng-container>
-          <ng-container *ngSwitchCase="availabilityTypes.ONE_TIME">
-            Dodaj jednorazową dostępność
-          </ng-container>
-          <ng-container *ngSwitchCase="availabilityTypes.ABSENCE">
-            Dodaj nieobecność
-          </ng-container>
-        </ng-container>
+      <button type="button" class="add-slot" (click)="addTimeSlot()">
+        <i class="fas fa-plus"></i> Dodaj slot czasowy
       </button>
     </div>
+
+    <button type="submit" class="submit-btn" [disabled]="!availabilityForm.valid">
+      {{ selectedType === availabilityTypes.ABSENCE ? 'Dodaj nieobecność' : 'Zapisz dostępność' }}
+    </button>
   </form>
 
   <!-- Lista dostępności -->
   <div class="availability-list" *ngIf="availabilities.length > 0">
     <h3>Twoje terminy</h3>
     <div class="availability-items">
-      <div *ngFor="let item of availabilities" class="availability-item" [ngClass]="getItemClass(item)">
+      <div *ngFor="let item of availabilities" class="availability-item" [ngClass]="item.type.toLowerCase()">
         <div class="item-header">
-          <span class="item-type">{{ getTypeLabel(item.type) }}</span>
-          <button class="btn-delete" (click)="deleteAvailability(item)">
+          <span class="type-label">
+            {{ item.type === availabilityTypes.RECURRING ? 'Cykliczna dostępność' :
+               item.type === availabilityTypes.ONE_TIME ? 'Jednorazowa dostępność' : 'Nieobecność' }}
+          </span>
+          <button class="delete-btn" (click)="removeAvailability(item.id!)" *ngIf="item.id">
             <i class="fas fa-trash"></i>
           </button>
         </div>
-        <div class="item-dates">
-          <p>Od: {{ formatDate(item.startDate) }}</p>
-          <p>Do: {{ formatDate(item.endDate) }}</p>
+        <div class="item-details">
+          <p class="date-range">
+            {{ formatDate(item.startDate) }} - {{ formatDate(item.endDate) }}
+          </p>
+          <ng-container *ngIf="item.type === availabilityTypes.RECURRING">
+            <p class="weekdays" *ngIf="item.weekDays?.length">
+              <strong>Dni:</strong> {{ getSelectedDays() }}
+            </p>
+          </ng-container>
+          <p class="time-slots" *ngIf="item.timeSlots?.length">
+            <strong>Godziny:</strong>
+            <span *ngFor="let slot of item.timeSlots">
+              {{ formatTime(slot.start) }} - {{ formatTime(slot.end) }}
+            </span>
+          </p>
         </div>
-        <ng-container [ngSwitch]="item.type">
-          <div *ngSwitchCase="availabilityTypes.RECURRING" class="item-details">
-            <p>Dni: {{ formatWeekDays(item.weekDays) }}</p>
-            <p>Godziny: {{ formatTimeSlots(item.timeSlots) }}</p>
-          </div>
-          <div *ngSwitchDefault class="item-details">
-            <p>Godziny: {{ formatTimeSlots(item.timeSlots) }}</p>
-          </div>
-        </ng-container>
       </div>
     </div>
   </div>
