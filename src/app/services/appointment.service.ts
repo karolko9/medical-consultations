@@ -1,23 +1,29 @@
 import { Injectable } from '@angular/core';
+import { Database, ref, push, get, remove, query, orderByChild, set, onValue } from '@angular/fire/database';
 import { Observable, BehaviorSubject } from 'rxjs';
 import { Appointment, AppointmentStatus } from '../models/appointment.model';
-import { Database, ref, set, push, remove, onValue } from '@angular/fire/database';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AppointmentService {
   private appointmentsSubject = new BehaviorSubject<Appointment[]>([]);
+  private DEBUG = true;
+  private readonly dbPath = 'appointments';
 
   constructor(private db: Database) {
-    this.loadAppointmentsFromFirebase();
+    this.initializeAppointments();
   }
 
-  private loadAppointmentsFromFirebase(): void {
-    console.log('Loading appointments from Firebase...');
-    const appointmentsRef = ref(this.db, 'appointments');
+  private log(...args: any[]) {
+    if (this.DEBUG) {
+      console.log('[AppointmentService]', ...args);
+    }
+  }
+
+  private initializeAppointments() {
+    const appointmentsRef = ref(this.db, this.dbPath);
     onValue(appointmentsRef, (snapshot) => {
-      console.log('Raw appointments data:', snapshot.val());
       const data = snapshot.val();
       const appointments: Appointment[] = [];
       if (data) {
@@ -31,7 +37,6 @@ export class AppointmentService {
           });
         });
       }
-      console.log('Processed appointments:', appointments);
       this.appointmentsSubject.next(appointments);
     });
   }
@@ -40,49 +45,47 @@ export class AppointmentService {
     return this.appointmentsSubject.asObservable();
   }
 
-  addAppointment(appointment: Appointment): Observable<Appointment> {
-    console.log('Adding appointment:', appointment);
-    return new Observable(subscriber => {
-      const appointmentsRef = ref(this.db, 'appointments');
-      const newAppointment = {
-        ...appointment,
-        start: appointment.start instanceof Date ? appointment.start.toISOString() : appointment.start,
-        end: appointment.end instanceof Date ? appointment.end.toISOString() : appointment.end
-      };
-      
-      console.log('Saving appointment to Firebase:', newAppointment);
-      push(appointmentsRef, newAppointment)
-        .then((reference) => {
-          if (!reference.key) {
-            throw new Error('Failed to generate appointment ID');
-          }
-          const savedAppointment: Appointment = {
-            ...newAppointment,
-            id: reference.key,
-            start: new Date(newAppointment.start),
-            end: new Date(newAppointment.end)
-          };
-          console.log('Successfully saved appointment:', savedAppointment);
-          subscriber.next(savedAppointment);
-          subscriber.complete();
-        })
-        .catch(error => {
-          console.error('Error saving appointment:', error);
-          subscriber.error(error);
-        });
-    });
+  async addAppointment(appointment: Appointment): Promise<Appointment> {
+    const startDate = new Date(appointment.start);
+    const endDate = new Date(appointment.end);
+    
+    const hasConflict = await this.hasTimeSlotConflict(startDate, endDate);
+    if (hasConflict) {
+      throw new Error('Wybrany termin koliduje z inną wizytą');
+    }
+
+    const appointmentsRef = ref(this.db, this.dbPath);
+    const appointmentToSave = {
+      ...appointment,
+      start: startDate.toISOString(),
+      end: endDate.toISOString()
+    };
+
+    const newAppointmentRef = await push(appointmentsRef);
+    if (!newAppointmentRef.key) {
+      throw new Error('Nie udało się utworzyć nowej wizyty');
+    }
+
+    const newAppointment = { ...appointmentToSave, id: newAppointmentRef.key };
+    await set(newAppointmentRef, newAppointment);
+    
+    return {
+      ...newAppointment,
+      start: startDate,
+      end: endDate
+    };
   }
 
   updateAppointment(appointment: Appointment): Observable<Appointment> {
     return new Observable(subscriber => {
-      const appointmentRef = ref(this.db, `appointments/${appointment.id}`);
-      const updatedAppointment = {
+      const appointmentRef = ref(this.db, `${this.dbPath}/${appointment.id}`);
+      const appointmentToSave = {
         ...appointment,
-        start: appointment.start instanceof Date ? appointment.start.toISOString() : appointment.start,
-        end: appointment.end instanceof Date ? appointment.end.toISOString() : appointment.end
+        start: new Date(appointment.start).toISOString(),
+        end: new Date(appointment.end).toISOString()
       };
-      
-      set(appointmentRef, updatedAppointment)
+
+      set(appointmentRef, appointmentToSave)
         .then(() => {
           subscriber.next(appointment);
           subscriber.complete();
@@ -93,7 +96,7 @@ export class AppointmentService {
 
   cancelAppointment(id: string): Observable<void> {
     return new Observable(subscriber => {
-      const appointmentRef = ref(this.db, `appointments/${id}`);
+      const appointmentRef = ref(this.db, `${this.dbPath}/${id}`);
       remove(appointmentRef)
         .then(() => {
           subscriber.next();
@@ -103,16 +106,46 @@ export class AppointmentService {
     });
   }
 
-  getAppointmentsByDateRange(start: Date, end: Date): Observable<Appointment[]> {
-    return new Observable(subscriber => {
-      const appointments = this.appointmentsSubject.value;
-      const filteredAppointments = appointments.filter(appointment => {
-        const appointmentStart = appointment.start instanceof Date ? appointment.start : new Date(appointment.start);
-        const appointmentEnd = appointment.end instanceof Date ? appointment.end : new Date(appointment.end);
-        return appointmentStart >= start && appointmentEnd <= end;
-      });
-      subscriber.next(filteredAppointments);
-      subscriber.complete();
+  async hasTimeSlotConflict(start: Date, end: Date): Promise<boolean> {
+    const appointments = await this.getAppointmentsSnapshot();
+    
+    return appointments.some(appointment => {
+      if (appointment.status === AppointmentStatus.CANCELLED) {
+        return false;
+      }
+
+      const appointmentStart = new Date(appointment.start);
+      const appointmentEnd = new Date(appointment.end);
+
+      return (
+        (start >= appointmentStart && start < appointmentEnd) ||
+        (end > appointmentStart && end <= appointmentEnd) ||
+        (start <= appointmentStart && end >= appointmentEnd)
+      );
     });
+  }
+
+  private async getAppointmentsSnapshot(): Promise<Appointment[]> {
+    const appointmentsRef = ref(this.db, this.dbPath);
+    const snapshot = await get(appointmentsRef);
+    
+    if (!snapshot.exists()) {
+      return [];
+    }
+
+    const appointments: Appointment[] = [];
+    snapshot.forEach((child) => {
+      const appointment = child.val();
+      if (child.key) {
+        appointments.push({
+          ...appointment,
+          id: child.key,
+          start: new Date(appointment.start),
+          end: new Date(appointment.end)
+        });
+      }
+    });
+
+    return appointments;
   }
 }

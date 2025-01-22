@@ -1,10 +1,8 @@
-import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
+import { Component, OnInit, Input, Output, EventEmitter } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { addMinutes } from 'date-fns';
 import { Appointment, ConsultationType, AppointmentStatus } from '../../models/appointment.model';
 import { AppointmentService } from '../../services/appointment.service';
 import { CartService } from '../../services/cart.service';
-import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-appointment-form',
@@ -12,14 +10,17 @@ import { firstValueFrom } from 'rxjs';
   styleUrls: ['./appointment-form.component.scss']
 })
 export class AppointmentFormComponent implements OnInit {
-  @Input() selectedDate!: Date;
+  @Input() selectedDate: Date = new Date();
   @Output() appointmentCreated = new EventEmitter<void>();
   @Output() closeForm = new EventEmitter<void>();
 
   appointmentForm: FormGroup;
   consultationTypes = Object.values(ConsultationType);
-  maxDuration = 180; // 3 hours
-  isSubmitting = false;
+  submitting = false;
+  error: string | null = null;
+  allDurations = [30, 60, 90, 120];
+  availableDurations: number[] = [];
+  loadingDurations = false;
 
   constructor(
     private fb: FormBuilder,
@@ -28,34 +29,82 @@ export class AppointmentFormComponent implements OnInit {
   ) {
     this.appointmentForm = this.fb.group({
       patientName: ['', Validators.required],
-      patientAge: ['', [Validators.required, Validators.min(0), Validators.max(150)]],
       patientGender: ['', Validators.required],
-      consultationType: [ConsultationType.CONSULTATION, Validators.required],
-      duration: [30, [Validators.required, Validators.min(30), Validators.max(180)]],
-      additionalInfo: ['']
+      patientAge: ['', [Validators.required, Validators.min(0), Validators.max(150)]],
+      consultationType: [ConsultationType.FIRST_VISIT, Validators.required],
+      additionalInfo: [''],
+      duration: [30, [Validators.required, Validators.min(30)]]
     });
   }
 
-  ngOnInit() {
-    this.appointmentForm.get('duration')?.setValidators([
-      Validators.required,
-      Validators.min(30),
-      Validators.max(this.maxDuration)
-    ]);
+  ngOnInit(): void {
+    this.checkAvailableDurations();
+  }
+
+  private isEndTimeValid(endDate: Date): boolean {
+    const endTime = endDate.getHours() * 60 + endDate.getMinutes();
+    const maxEndTime = 14 * 60; // 14:00
+    return endTime <= maxEndTime;
+  }
+
+  async checkAvailableDurations() {
+    this.loadingDurations = true;
+    this.availableDurations = [];
+    
+    try {
+      const startDate = new Date(this.selectedDate);
+      
+      for (const duration of this.allDurations) {
+        const endDate = new Date(startDate.getTime() + duration * 60000);
+        
+        // Sprawdź czy koniec wizyty nie przekracza 14:00
+        if (!this.isEndTimeValid(endDate)) {
+          continue;
+        }
+
+        const hasConflict = await this.appointmentService.hasTimeSlotConflict(startDate, endDate);
+        if (!hasConflict) {
+          this.availableDurations.push(duration);
+        }
+      }
+
+      if (this.availableDurations.length === 0) {
+        this.error = 'Brak dostępnych terminów o wybranej godzinie';
+        this.appointmentForm.get('duration')?.disable();
+      } else {
+        this.error = null;
+        this.appointmentForm.get('duration')?.enable();
+        
+        if (!this.appointmentForm.get('duration')?.value) {
+          this.appointmentForm.get('duration')?.setValue(this.availableDurations[0]);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking available durations:', error);
+      this.error = 'Wystąpił błąd podczas sprawdzania dostępnych terminów';
+    } finally {
+      this.loadingDurations = false;
+    }
   }
 
   async onSubmit() {
-    if (this.appointmentForm.valid && !this.isSubmitting) {
-      this.isSubmitting = true;
+    if (this.appointmentForm.valid && !this.submitting) {
+      this.submitting = true;
+      this.error = null;
 
       try {
         const formValue = this.appointmentForm.value;
-        const end = addMinutes(this.selectedDate, formValue.duration);
-        
+        const startDate = new Date(this.selectedDate);
+        const endDate = new Date(startDate.getTime() + formValue.duration * 60000);
+
+        // Dodatkowe sprawdzenie przed zapisem
+        if (!this.isEndTimeValid(endDate)) {
+          throw new Error('Wizyta nie może kończyć się później niż 14:00');
+        }
+
         const appointment: Appointment = {
-          start: this.selectedDate,
-          end: end,
-          duration: formValue.duration,
+          start: startDate,
+          end: endDate,
           title: `${formValue.consultationType}: ${formValue.patientName}`,
           patientName: formValue.patientName,
           patientGender: formValue.patientGender,
@@ -65,17 +114,15 @@ export class AppointmentFormComponent implements OnInit {
           status: AppointmentStatus.PENDING
         };
 
-        // Używamy firstValueFrom aby przekonwertować Observable na Promise
-        const savedAppointment = await firstValueFrom(this.appointmentService.addAppointment(appointment));
-        await this.cartService.addToCart(savedAppointment);
-        
+        const savedAppointment = await this.appointmentService.addAppointment(appointment);
+        this.cartService.addToCart(savedAppointment);
         this.appointmentCreated.emit();
         this.closeForm.emit();
-      } catch (error) {
+      } catch (error: any) {
+        this.error = error.message || 'Error creating appointment';
         console.error('Error creating appointment:', error);
-        alert('Nie udało się utworzyć wizyty. Spróbuj ponownie.');
       } finally {
-        this.isSubmitting = false;
+        this.submitting = false;
       }
     }
   }
@@ -84,23 +131,18 @@ export class AppointmentFormComponent implements OnInit {
     this.closeForm.emit();
   }
 
-  get formattedDate(): string {
-    return this.selectedDate ? 
-      new Date(this.selectedDate).toLocaleString('pl-PL', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      }) : '';
+  get formControls() {
+    return this.appointmentForm.controls;
   }
 
-  get availableDuration(): string {
-    const hours = Math.floor(this.maxDuration / 60);
-    const minutes = this.maxDuration % 60;
-    return hours > 0 ? 
-      `${hours} godzin${hours === 1 ? 'a' : 'y'} ${minutes > 0 ? `i ${minutes} minut` : ''}` : 
-      `${minutes} minut`;
+  get formattedDate(): string {
+    return this.selectedDate.toLocaleDateString('pl-PL', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   }
 }

@@ -36,7 +36,7 @@ export class DoctorCalendarComponent implements OnInit, OnDestroy {
 
   // Calendar display settings
   dayStartHour = 8;
-  dayEndHour = 14;
+  dayEndHour = 13;
   hourSegments = 2;
   hourSegmentHeight = 30;
 

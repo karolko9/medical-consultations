@@ -1,7 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CartService, CartItem } from '../../services/cart.service';
-import { Subject, takeUntil } from 'rxjs';
-import { format } from 'date-fns';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-reservation-cart',
@@ -12,40 +11,45 @@ export class ReservationCartComponent implements OnInit, OnDestroy {
   cartItems: CartItem[] = [];
   totalPrice: number = 0;
   isProcessingPayment: boolean = false;
-  private destroy$ = new Subject<void>();
+  private subscription: Subscription = new Subscription();
 
   constructor(private cartService: CartService) {}
 
-  ngOnInit() {
-    this.cartService.getCartItems()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(items => {
+  ngOnInit(): void {
+    this.subscription.add(
+      this.cartService.getItems().subscribe(items => {
         this.cartItems = items;
         this.totalPrice = this.cartService.getTotalPrice();
-      });
+      })
+    );
   }
 
-  ngOnDestroy() {
-    this.destroy$.next();
-    this.destroy$.complete();
+  ngOnDestroy(): void {
+    this.subscription.unsubscribe();
   }
 
-  async removeItem(appointmentId: string) {
-    try {
-      await this.cartService.removeFromCart(appointmentId);
-    } catch (error) {
-      console.error('Error removing item from cart:', error);
-    }
+  removeItem(appointmentId: string): void {
+    this.cartService.removeFromCart(appointmentId);
+  }
+
+  clearCart(): void {
+    this.cartService.clearCart();
   }
 
   formatDate(date: Date | string): string {
-    try {
-      const dateObj = typeof date === 'string' ? new Date(date) : date;
-      return format(dateObj, 'dd.MM.yyyy HH:mm');
-    } catch (error) {
-      console.error('Error formatting date:', error);
-      return 'Invalid date';
-    }
+    return new Date(date).toLocaleDateString('pl-PL', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
+  calculateDuration(start: Date | string, end: Date | string): number {
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    return (endDate.getTime() - startDate.getTime()) / (1000 * 60); // Duration in minutes
   }
 
   async processPayment() {
@@ -56,10 +60,9 @@ export class ReservationCartComponent implements OnInit, OnDestroy {
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Sukces
-      await this.cartService.clearCart();
       alert('Płatność zakończona sukcesem! Twoje wizyty zostały potwierdzone.');
+      this.cartService.clearCart();
     } catch (error) {
-      console.error('Error processing payment:', error);
       alert('Wystąpił błąd podczas przetwarzania płatności. Spróbuj ponownie.');
     } finally {
       this.isProcessingPayment = false;

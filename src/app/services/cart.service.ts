@@ -1,10 +1,8 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { Appointment, ConsultationType } from '../models/appointment.model';
-import { Database, ref, set, push, remove, onValue } from '@angular/fire/database';
 
 export interface CartItem {
-  id?: string;
   appointment: Appointment;
   price: number;
 }
@@ -13,110 +11,118 @@ export interface CartItem {
   providedIn: 'root'
 })
 export class CartService {
-  private cartItems = new BehaviorSubject<CartItem[]>([]);
-  
-  constructor(private db: Database) {
-    this.loadCartFromFirebase();
+  private readonly CART_STORAGE_KEY = 'medical-cart';
+  private items: CartItem[] = [];
+  private itemsSubject = new BehaviorSubject<CartItem[]>([]);
+
+  constructor() {
+    this.loadFromStorage();
   }
 
-  private loadCartFromFirebase(): void {
-    console.log('Loading cart from Firebase...');
-    const cartRef = ref(this.db, 'cart');
-    onValue(cartRef, (snapshot) => {
-      console.log('Raw Firebase data:', snapshot.val());
-      const data = snapshot.val();
-      const items: CartItem[] = [];
-      if (data) {
-        Object.keys(data).forEach(key => {
-          const item = data[key];
-          console.log('Processing item:', item);
-          items.push({
-            ...item,
-            id: key,
-            appointment: {
-              ...item.appointment,
-              start: new Date(item.appointment.start),
-              end: new Date(item.appointment.end)
-            }
-          });
-        });
+  private loadFromStorage() {
+    const savedCart = localStorage.getItem(this.CART_STORAGE_KEY);
+    if (savedCart) {
+      try {
+        const parsedCart = JSON.parse(savedCart);
+        // Konwertuj daty z powrotem na obiekty Date
+        this.items = parsedCart.map((item: CartItem) => ({
+          ...item,
+          appointment: {
+            ...item.appointment,
+            start: new Date(item.appointment.start),
+            end: new Date(item.appointment.end)
+          }
+        }));
+        this.itemsSubject.next(this.items);
+      } catch (error) {
+        console.error('Error loading cart from storage:', error);
+        this.items = [];
+        this.itemsSubject.next(this.items);
       }
-      console.log('Processed cart items:', items);
-      this.cartItems.next(items);
-    });
-  }
-
-  getCartItems(): Observable<CartItem[]> {
-    return this.cartItems.asObservable();
-  }
-
-  async addToCart(appointment: Appointment): Promise<void> {
-    console.log('Adding to cart:', appointment);
-    if (!appointment.id) {
-      throw new Error('Appointment must have an ID before adding to cart');
     }
-    const price = this.calculatePrice(appointment);
-    const cartRef = ref(this.db, 'cart');
-    const newItem: CartItem = {
-      appointment: {
-        ...appointment,
-        start: appointment.start instanceof Date ? appointment.start.toISOString() : appointment.start,
-        end: appointment.end instanceof Date ? appointment.end.toISOString() : appointment.end
-      },
-      price
-    };
-    console.log('Saving item to Firebase:', newItem);
+  }
+
+  private saveToStorage() {
     try {
-      await push(cartRef, newItem);
-      console.log('Successfully saved to Firebase');
+      localStorage.setItem(this.CART_STORAGE_KEY, JSON.stringify(this.items));
     } catch (error) {
-      console.error('Error saving to Firebase:', error);
-      throw error;
+      console.error('Error saving cart to storage:', error);
     }
   }
 
-  async removeFromCart(appointmentId: string): Promise<void> {
-    const currentItems = this.cartItems.value;
-    const itemToRemove = currentItems.find(item => item.appointment.id === appointmentId);
-    if (itemToRemove && itemToRemove.id) {
-      const cartItemRef = ref(this.db, `cart/${itemToRemove.id}`);
-      await remove(cartItemRef);
+  getItems(): Observable<CartItem[]> {
+    return this.itemsSubject.asObservable();
+  }
+
+  // Alias dla kompatybilności wstecznej
+  getCartItems(): Observable<CartItem[]> {
+    return this.getItems();
+  }
+
+  addItem(appointment: Appointment) {
+    const price = this.calculatePrice(appointment);
+    this.items.push({ appointment, price });
+    this.itemsSubject.next(this.items);
+    this.saveToStorage();
+  }
+
+  // Alias dla kompatybilności wstecznej
+  addToCart(appointment: Appointment) {
+    this.addItem(appointment);
+  }
+
+  removeItem(appointment: Appointment) {
+    const index = this.items.findIndex(item => item.appointment === appointment);
+    if (index > -1) {
+      this.items.splice(index, 1);
+      this.itemsSubject.next(this.items);
+      this.saveToStorage();
     }
   }
 
-  async clearCart(): Promise<void> {
-    const cartRef = ref(this.db, 'cart');
-    await remove(cartRef);
+  // Alias dla kompatybilności wstecznej
+  removeFromCart(appointmentId: string) {
+    const index = this.items.findIndex(item => item.appointment.id === appointmentId);
+    if (index > -1) {
+      this.items.splice(index, 1);
+      this.itemsSubject.next(this.items);
+      this.saveToStorage();
+    }
   }
 
   getTotalPrice(): number {
-    return this.cartItems.value.reduce((total, item) => total + item.price, 0);
+    return this.items.reduce((total, item) => total + item.price, 0);
   }
 
   private calculatePrice(appointment: Appointment): number {
-    const basePrice = 100; // Podstawowa cena wizyty
-    const start = appointment.start instanceof Date ? appointment.start : new Date(appointment.start);
-    const end = appointment.end instanceof Date ? appointment.end : new Date(appointment.end);
+    const start = new Date(appointment.start);
+    const end = new Date(appointment.end);
     const durationInHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-    
-    let price = basePrice * durationInHours;
+    let basePrice = 0;
 
-    // Dodatkowa opłata za typ konsultacji
     switch (appointment.consultationType) {
       case ConsultationType.FIRST_VISIT:
-        price *= 1.5; // +50% za pierwszą wizytę
+        basePrice = 200;
         break;
       case ConsultationType.FOLLOW_UP:
-        price *= 1.2; // +20% za wizytę kontrolną
-        break;
-      case ConsultationType.CONSULTATION:
-        // Standardowa cena
+        basePrice = 150;
         break;
       case ConsultationType.PRESCRIPTION:
-        price *= 0.8; // -20% za receptę
+        basePrice = 80;
         break;
+      case ConsultationType.CONSULTATION:
+        basePrice = 120;
+        break;
+      default:
+        basePrice = 100;
     }
 
-    return price;
+    return basePrice * durationInHours;
+  }
+
+  clearCart() {
+    this.items = [];
+    this.itemsSubject.next(this.items);
+    localStorage.removeItem(this.CART_STORAGE_KEY);
   }
 }

@@ -16,10 +16,8 @@
         </div>
         <div class="item-info">
           <p><strong>Pacjent:</strong> {{ item.appointment.patientName }}</p>
-          <p><strong>Data:</strong> {{ formatDate(item.appointment.start) }}</p>
-          <p><strong>Czas trwania:</strong> {{ 
-            (item.appointment.end.getTime() - item.appointment.start.getTime()) / (1000 * 60) 
-          }} minut</p>
+          <p>Data: {{ formatDate(item.appointment.start) }}</p>
+          <p>Czas trwania: {{ calculateDuration(item.appointment.start, item.appointment.end) }} minut</p>
         </div>
         <div class="item-price">
           {{ item.price }} zł
