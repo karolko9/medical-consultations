@@ -1,0 +1,84 @@
+<div class="register-container">
+  <div class="register-card">
+    <h2>Rejestracja</h2>
+    <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
+      <div class="form-group">
+        <label for="displayName">Imię i nazwisko</label>
+        <input
+          type="text"
+          id="displayName"
+          formControlName="displayName"
+          class="form-control"
+          [ngClass]="{ 'is-invalid': registerForm.get('displayName')?.errors && registerForm.get('displayName')?.touched }"
+        />
+        <div class="invalid-feedback" *ngIf="registerForm.get('displayName')?.errors?.['required']">
+          Imię i nazwisko jest wymagane
+        </div>
+        <div class="invalid-feedback" *ngIf="registerForm.get('displayName')?.errors?.['minlength']">
+          Imię i nazwisko musi mieć co najmniej 3 znaki
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input
+          type="email"
+          id="email"
+          formControlName="email"
+          class="form-control"
+          [ngClass]="{ 'is-invalid': registerForm.get('email')?.errors && registerForm.get('email')?.touched }"
+        />
+        <div class="invalid-feedback" *ngIf="registerForm.get('email')?.errors?.['required']">
+          Email jest wymagany
+        </div>
+        <div class="invalid-feedback" *ngIf="registerForm.get('email')?.errors?.['email']">
+          Nieprawidłowy format email
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="password">Hasło</label>
+        <input
+          type="password"
+          id="password"
+          formControlName="password"
+          class="form-control"
+          [ngClass]="{ 'is-invalid': registerForm.get('password')?.errors && registerForm.get('password')?.touched }"
+        />
+        <div class="invalid-feedback" *ngIf="registerForm.get('password')?.errors?.['required']">
+          Hasło jest wymagane
+        </div>
+        <div class="invalid-feedback" *ngIf="registerForm.get('password')?.errors?.['minlength']">
+          Hasło musi mieć co najmniej 6 znaków
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="confirmPassword">Potwierdź hasło</label>
+        <input
+          type="password"
+          id="confirmPassword"
+          formControlName="confirmPassword"
+          class="form-control"
+          [ngClass]="{ 'is-invalid': registerForm.errors?.['mismatch'] && registerForm.get('confirmPassword')?.touched }"
+        />
+        <div class="invalid-feedback" *ngIf="registerForm.errors?.['mismatch']">
+          Hasła nie są takie same
+        </div>
+      </div>
+
+      <div class="alert alert-danger" *ngIf="error">
+        {{error}}
+      </div>
+
+      <button class="btn btn-primary w-100" [disabled]="loading || registerForm.invalid">
+        <span *ngIf="loading" class="spinner-border spinner-border-sm me-1"></span>
+        Zarejestruj się
+      </button>
+
+      <div class="mt-3 text-center">
+        <p>Masz już konto? <a routerLink="/login">Zaloguj się</a></p>
+      </div>
+    </form>
+  </div>
+</div>

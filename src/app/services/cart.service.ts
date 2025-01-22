@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { Appointment, ConsultationType } from '../models/appointment.model';
 
 export interface CartItem {
@@ -57,6 +58,12 @@ export class CartService {
   // Alias dla kompatybilności wstecznej
   getCartItems(): Observable<CartItem[]> {
     return this.getItems();
+  }
+
+  getCartItemsCount(): Observable<number> {
+    return this.itemsSubject.asObservable().pipe(
+      map((items: CartItem[]) => items.length)
+    );
   }
 
   addItem(appointment: Appointment) {

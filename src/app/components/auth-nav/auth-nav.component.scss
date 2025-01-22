@@ -1,0 +1,50 @@
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+
+  .user-name {
+    font-weight: 500;
+    color: white;
+  }
+
+  .user-role {
+    .badge {
+      padding: 0.5em 0.8em;
+      font-size: 0.8rem;
+    }
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 1rem;
+
+    .nav-link {
+      color: rgba(255, 255, 255, 0.85);
+      text-decoration: none;
+      padding: 0.5rem 0;
+      font-size: 0.9rem;
+      transition: color 0.2s;
+
+      &:hover {
+        color: white;
+      }
+
+      &.active {
+        color: white;
+        font-weight: 500;
+      }
+    }
+  }
+}
+
+.auth-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  .btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+  }
+}

@@ -1,0 +1,37 @@
+<ng-container *ngIf="currentUser$ | async as user; else loginButtons">
+  <div class="user-info">
+    <span class="user-name">{{ user.displayName }}</span>
+    <div class="user-role" [ngSwitch]="user.role">
+      <span *ngSwitchCase="UserRole.ADMIN" class="badge bg-danger">Administrator</span>
+      <span *ngSwitchCase="UserRole.DOCTOR" class="badge bg-primary">Lekarz</span>
+      <span *ngSwitchCase="UserRole.PATIENT" class="badge bg-success">Pacjent</span>
+    </div>
+    <div class="nav-links" [ngSwitch]="user.role">
+      <!-- Admin Links -->
+      <ng-container *ngSwitchCase="UserRole.ADMIN">
+        <a routerLink="/admin/users" class="nav-link">Użytkownicy</a>
+        <a routerLink="/admin/doctors" class="nav-link">Zarządzaj lekarzami</a>
+      </ng-container>
+      
+      <!-- Doctor Links -->
+      <ng-container *ngSwitchCase="UserRole.DOCTOR">
+        <a routerLink="/doctor/calendar" class="nav-link">Mój kalendarz</a>
+        <a routerLink="/doctor/availability" class="nav-link">Dostępność</a>
+      </ng-container>
+      
+      <!-- Patient Links -->
+      <ng-container *ngSwitchCase="UserRole.PATIENT">
+        <a routerLink="/patient/appointments" class="nav-link">Moje wizyty</a>
+        <a routerLink="/patient/history" class="nav-link">Historia</a>
+      </ng-container>
+    </div>
+    <button class="btn btn-outline-light" (click)="logout()">Wyloguj</button>
+  </div>
+</ng-container>
+
+<ng-template #loginButtons>
+  <div class="auth-buttons">
+    <a routerLink="/login" class="btn btn-outline-light me-2">Zaloguj się</a>
+    <a routerLink="/register" class="btn btn-light">Zarejestruj się</a>
+  </div>
+</ng-template>

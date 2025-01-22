@@ -18,7 +18,7 @@
 
   .navbar-brand {
     font-size: 1.25rem;
-    font-weight: 600;
+    font-weight: 500;
     
     a {
       color: white;
@@ -47,22 +47,18 @@
       align-items: center;
 
       a {
-        color: white;
-        text-decoration: none;
+        font-size: 0.95rem;
         padding: 0.5rem 1rem;
-        border-radius: 4px;
-        transition: all 0.2s ease;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        font-weight: 500;
+        color: rgba(255, 255, 255, 0.85) !important;
+        transition: color 0.2s;
 
         &:hover {
-          background-color: rgba(255, 255, 255, 0.1);
+          color: white !important;
         }
 
         &.active {
-          background-color: rgba(255, 255, 255, 0.2);
+          color: white !important;
+          font-weight: 500;
         }
 
         &.cart-link {
@@ -70,25 +66,31 @@
           align-items: center;
           gap: 0.5rem;
 
-          .fa-shopping-cart {
-            font-size: 1.1em;
+          i {
+            font-size: 1.1rem;
           }
 
-          .cart-count {
-            background-color: #ff4081;
-            color: white;
-            border-radius: 50%;
-            padding: 0.25rem 0.5rem;
-            font-size: 0.8em;
-            min-width: 1.5em;
-            height: 1.5em;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
+          .badge {
+            font-size: 0.75rem;
+            padding: 0.35em 0.65em;
           }
         }
       }
     }
+  }
+}
+
+// Mobile responsiveness
+@media (max-width: 991.98px) {
+  .navbar-collapse {
+    padding: 1rem 0;
+  }
+
+  .navbar-nav {
+    gap: 0.5rem;
+  }
+
+  .nav-link {
+    padding-left: 0 !important;
   }
 }

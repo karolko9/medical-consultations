@@ -1,20 +1,55 @@
-<nav class="navbar">
-  <div class="navbar-content">
-    <div class="navbar-brand">
-      <a routerLink="/">Konsultacje medyczne</a>
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+  <div class="container">
+    <a class="navbar-brand" routerLink="/">Konsultacje medyczne</a>
+    
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navbarContent">
+      <ul class="navbar-nav me-auto">
+        <!-- Public Links -->
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/doctors" routerLinkActive="active">Lista lekarzy</a>
+        </li>
+
+        <!-- Patient Links -->
+        <ng-container *ngIf="isPatient$ | async">
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/patient/appointments" routerLinkActive="active">Moje wizyty</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link cart-link" routerLink="/cart" routerLinkActive="active">
+              <i class="fas fa-shopping-cart"></i>
+              Koszyk
+              <span class="badge bg-danger" *ngIf="cartItemsCount$ | async as count">{{ count }}</span>
+            </a>
+          </li>
+        </ng-container>
+
+        <!-- Doctor Links -->
+        <ng-container *ngIf="isDoctor$ | async">
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/doctor/calendar" routerLinkActive="active">Mój kalendarz</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/doctor/availability" routerLinkActive="active">Dostępność</a>
+          </li>
+        </ng-container>
+
+        <!-- Admin Links -->
+        <ng-container *ngIf="isAdmin$ | async">
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/admin/users" routerLinkActive="active">Użytkownicy</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/admin/doctors" routerLinkActive="active">Zarządzanie lekarzami</a>
+          </li>
+        </ng-container>
+      </ul>
+
+      <!-- Auth Navigation -->
+      <app-auth-nav></app-auth-nav>
     </div>
-    <ul class="navbar-links">
-      <li><a routerLink="/calendar" routerLinkActive="active">Kalendarz</a></li>
-      <li><a routerLink="/availability" routerLinkActive="active">Dostępność</a></li>
-      <li>
-        <a routerLink="/cart" routerLinkActive="active" class="cart-link">
-          <i class="fas fa-shopping-cart"></i>
-          Koszyk
-          <span class="cart-count" *ngIf="cartItemsCount$ | async as count">
-            {{ count }}
-          </span>
-        </a>
-      </li>
-    </ul>
   </div>
 </nav>
