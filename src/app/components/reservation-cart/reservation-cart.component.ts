@@ -1,6 +1,8 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CartService, CartItem } from '../../services/cart.service';
+import { AppointmentService } from '../../services/appointment.service';
 import { Subscription } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-reservation-cart',
@@ -13,7 +15,10 @@ export class ReservationCartComponent implements OnInit, OnDestroy {
   isProcessingPayment: boolean = false;
   private subscription: Subscription = new Subscription();
 
-  constructor(private cartService: CartService) {}
+  constructor(
+    private cartService: CartService,
+    private appointmentService: AppointmentService
+  ) {}
 
   ngOnInit(): void {
     this.subscription.add(
@@ -28,12 +33,31 @@ export class ReservationCartComponent implements OnInit, OnDestroy {
     this.subscription.unsubscribe();
   }
 
-  removeItem(appointmentId: string): void {
-    this.cartService.removeFromCart(appointmentId);
+  async removeItem(appointmentId: string): Promise<void> {
+    try {
+      await firstValueFrom(this.appointmentService.cancelAppointment(appointmentId));
+      // Nie musimy wywoływać cartService.removeFromCart(appointmentId) 
+      // ponieważ AppointmentService już to robi w cancelAppointment
+    } catch (error) {
+      console.error('Error removing appointment:', error);
+      alert('Wystąpił błąd podczas usuwania wizyty. Spróbuj ponownie.');
+    }
   }
 
-  clearCart(): void {
-    this.cartService.clearCart();
+  async clearCart(): Promise<void> {
+    try {
+      // Usuwamy każdą wizytę z bazy danych
+      const cancelPromises = this.cartItems.map(item => 
+        firstValueFrom(this.appointmentService.cancelAppointment(item.appointment.id!))
+      );
+      await Promise.all(cancelPromises);
+      
+      // Nie musimy wywoływać cartService.clearCart() 
+      // ponieważ wszystkie wizyty zostały już usunięte przez cancelAppointment
+    } catch (error) {
+      console.error('Error clearing cart:', error);
+      alert('Wystąpił błąd podczas czyszczenia koszyka. Spróbuj ponownie.');
+    }
   }
 
   formatDate(date: Date | string): string {

@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Database, ref, push, get, remove, query, orderByChild, set, onValue } from '@angular/fire/database';
 import { Observable, BehaviorSubject } from 'rxjs';
 import { Appointment, AppointmentStatus } from '../models/appointment.model';
+import { CartService } from './cart.service';
 
 @Injectable({
   providedIn: 'root'
@@ -11,7 +12,7 @@ export class AppointmentService {
   private DEBUG = true;
   private readonly dbPath = 'appointments';
 
-  constructor(private db: Database) {
+  constructor(private db: Database, private cartService: CartService) {
     this.initializeAppointments();
   }
 
@@ -99,6 +100,7 @@ export class AppointmentService {
       const appointmentRef = ref(this.db, `${this.dbPath}/${id}`);
       remove(appointmentRef)
         .then(() => {
+          this.cartService.removeFromCart(id);
           subscriber.next();
           subscriber.complete();
         })

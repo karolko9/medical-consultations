@@ -62,21 +62,47 @@ export class AppointmentFormComponent implements OnInit {
     const dayOfWeek = startDate.getDay();
     const dateString = startDate.toISOString().split('T')[0];
 
+    console.log('Checking availability for:', {
+      startDate,
+      endDate,
+      startTime,
+      endTime,
+      dayOfWeek,
+      dateString
+    });
+
+    console.log('Current availabilities:', this.availabilities);
+
     // Sprawdź czy termin nie wypada w czasie nieobecności
     const absences = this.availabilities.filter(a => 
       a.type === AvailabilityType.ABSENCE &&
       new Date(a.startDate) <= startDate &&
       new Date(a.endDate) >= endDate
     );
+    console.log('Found absences:', absences);
     if (absences.length > 0) {
+      console.log('Appointment falls within absence period');
       return false;
     }
 
     // Sprawdź dostępności jednorazowe
-    const oneTimeAvailabilities = this.availabilities.filter(a => 
-      a.type === AvailabilityType.ONE_TIME &&
-      new Date(a.startDate).toISOString().split('T')[0] === dateString
-    );
+    const oneTimeAvailabilities = this.availabilities.filter(a => {
+      if (a.type !== AvailabilityType.ONE_TIME) return false;
+      
+      const availabilityStart = new Date(a.startDate);
+      const availabilityEnd = new Date(a.endDate);
+      const appointmentDate = new Date(dateString);
+      
+      console.log('Checking one-time availability:', {
+        availabilityStart,
+        availabilityEnd,
+        appointmentDate,
+        availability: a
+      });
+      
+      return appointmentDate >= availabilityStart && appointmentDate <= availabilityEnd;
+    });
+    console.log('One time availabilities for this date:', oneTimeAvailabilities);
 
     for (const availability of oneTimeAvailabilities) {
       for (const slot of availability.timeSlots || []) {
@@ -85,7 +111,17 @@ export class AppointmentFormComponent implements OnInit {
         const slotStartTime = slotStartHour * 60 + slotStartMinute;
         const slotEndTime = slotEndHour * 60 + slotEndMinute;
 
-        if (startTime >= slotStartTime && endTime <= slotEndTime) {
+        console.log('Checking one-time slot:', {
+          slot,
+          slotStartTime,
+          slotEndTime,
+          startTime,
+          endTime
+        });
+
+        // Sprawdź czy wizyta zaczyna się w dostępnym czasie
+        if (startTime >= slotStartTime && startTime < slotEndTime) {
+          console.log('Found matching one-time slot');
           return true;
         }
       }
@@ -98,6 +134,7 @@ export class AppointmentFormComponent implements OnInit {
       new Date(a.endDate) >= endDate &&
       a.weekDays?.includes(dayOfWeek)
     );
+    console.log('Recurring availabilities for this day:', recurringAvailabilities);
 
     for (const availability of recurringAvailabilities) {
       for (const slot of availability.timeSlots || []) {
@@ -106,12 +143,23 @@ export class AppointmentFormComponent implements OnInit {
         const slotStartTime = slotStartHour * 60 + slotStartMinute;
         const slotEndTime = slotEndHour * 60 + slotEndMinute;
 
-        if (startTime >= slotStartTime && endTime <= slotEndTime) {
+        console.log('Checking recurring slot:', {
+          slot,
+          slotStartTime,
+          slotEndTime,
+          startTime,
+          endTime
+        });
+
+        // Sprawdź czy wizyta zaczyna się w dostępnym czasie
+        if (startTime >= slotStartTime && startTime < slotEndTime) {
+          console.log('Found matching recurring slot');
           return true;
         }
       }
     }
 
+    console.log('No available slots found');
     return false;
   }
 
