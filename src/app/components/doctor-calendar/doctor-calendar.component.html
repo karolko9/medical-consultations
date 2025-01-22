@@ -1,18 +1,36 @@
 <div class="calendar-container">
-  <mwl-calendar-week-view
-    [viewDate]="viewDate"
-    [events]="events"
-    [refresh]="refresh"
-    [dayStartHour]="dayStartHour"
-    [dayEndHour]="dayEndHour"
-    [hourSegments]="hourSegments"
-    [hourSegmentHeight]="hourSegmentHeight"
-    (beforeViewRender)="beforeWeekViewRender($event)"
-    [headerTemplate]="customHeader"
-    (eventClicked)="handleEventClick($event)"
-    (hourSegmentClicked)="handleSlotClick($event)"
-    [tooltipTemplate]="tooltipTemplate">
-  </mwl-calendar-week-view>
+  <div class="calendar-header">
+    <h2>{{ viewDate | date:'MMMM y' }}</h2>
+    <div class="calendar-navigation">
+      <button class="btn btn-primary" mwlCalendarPreviousView [view]="view" [(viewDate)]="viewDate">
+        Poprzedni
+      </button>
+      <button class="btn btn-outline-secondary" mwlCalendarToday [(viewDate)]="viewDate">
+        Dzisiaj
+      </button>
+      <button class="btn btn-primary" mwlCalendarNextView [view]="view" [(viewDate)]="viewDate">
+        Następny
+      </button>
+    </div>
+  </div>
+
+  <div [ngSwitch]="view">
+    <mwl-calendar-week-view
+      *ngSwitchCase="CalendarView.Week"
+      [viewDate]="viewDate"
+      [events]="events"
+      [dayStartHour]="dayStartHour"
+      [dayEndHour]="dayEndHour"
+      [hourSegments]="hourSegments"
+      [hourSegmentHeight]="hourSegmentHeight"
+      [refresh]="refresh"
+      (eventClicked)="handleEventClick($event)"
+      (hourSegmentClicked)="handleSlotClick($event)"
+      [tooltipTemplate]="tooltipTemplate"
+      [headerTemplate]="customHeader"
+      (beforeViewRender)="beforeWeekViewRender($event)">
+    </mwl-calendar-week-view>
+  </div>
 </div>
 
 <ng-template #tooltipTemplate let-event="event">
@@ -28,11 +46,11 @@
       [class.cal-today]="day.isToday"
       [class.cal-future]="day.isFuture"
       [class.cal-weekend]="day.isWeekend">
-      {{ day.date | date:'EEEE' | titlecase }}
-      <div class="cal-day-number">{{ day.date | date:'d' }}</div>
-      <span class="appointment-count" *ngIf="day.appointmentCount && day.appointmentCount > 0">
-        {{ day.appointmentCount }} {{ day.appointmentCount === 1 ? 'wizyta' : 'wizyty' }}
-      </span>
+      <b>{{ day.date | date:'EEEE' | titlecase }}</b>
+      <span>{{ day.date | date:'d' }}</span>
+      <div class="appointment-count" *ngIf="getAppointmentCount(day.date) > 0">
+        {{ getAppointmentCount(day.date) }}
+      </div>
     </div>
   </div>
 </ng-template>

@@ -12,15 +12,6 @@ import { AvailabilityService } from '../../services/availability.service';
 import { Appointment, AppointmentStatus, ConsultationType } from '../../models/appointment.model';
 import { DoctorAvailability, AvailabilityType } from '../../models/availability.model';
 
-interface WeekDayHeader {
-  date: Date;
-  isPast: boolean;
-  isToday: boolean;
-  isFuture: boolean;
-  isWeekend: boolean;
-  appointmentCount?: number;
-}
-
 interface CalendarEventExtended extends CalendarEvent {
   meta?: Appointment | DoctorAvailability;
   cssClass?: string;
@@ -95,11 +86,16 @@ export class DoctorCalendarComponent implements OnInit, OnDestroy {
   }
 
   beforeWeekViewRender(event: CalendarWeekViewBeforeRenderEvent): void {
-    event.header?.forEach((day, index) => {
-      const appointmentCount = this.getAppointmentCountForDay(day.date);
-      (day as WeekDayHeader).appointmentCount = appointmentCount;
+    // Dodaj licznik konsultacji do nagłówków
+    event.header.forEach(day => {
+      const appointmentsForDay = this.getAppointmentCount(day.date);
+
+      if (appointmentsForDay > 0) {
+        day.cssClass = `has-appointments appointments-${appointmentsForDay}`;
+      }
     });
 
+    // Obsłuż dostępność w kolumnach
     event.hourColumns.forEach(hourColumn => {
       hourColumn.hours.forEach(hour => {
         hour.segments.forEach(segment => {
@@ -246,16 +242,6 @@ export class DoctorCalendarComponent implements OnInit, OnDestroy {
     });
   }
 
-  getAppointmentCountForDay(date: Date): number {
-    return this.events.filter(event => {
-      const eventDate = new Date(event.start);
-      return isSameDay(eventDate, date) && 
-             event.meta !== undefined &&
-             'consultationType' in event.meta &&
-             (event.meta as Appointment).status !== AppointmentStatus.CANCELLED;
-    }).length;
-  }
-
   getEventTooltip(event: CalendarEventExtended): string {
     if (!event.meta || !('consultationType' in event.meta)) {
       return '';
@@ -273,6 +259,12 @@ export class DoctorCalendarComponent implements OnInit, OnDestroy {
         </div>
       </div>
     `;
+  }
+
+  getAppointmentCount(date: Date): number {
+    return this.events.filter(event => 
+      isSameDay(new Date(event.start), date)
+    ).length;
   }
 
   onAppointmentSubmitted(appointment: Partial<Appointment>) {
