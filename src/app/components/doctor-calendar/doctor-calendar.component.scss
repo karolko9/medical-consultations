@@ -360,43 +360,36 @@
 
   // Style dla przycisku anulowania wizyty
   .cal-event {
-    position: relative;
-    height: 100%;
-    width: 100%;
+    position: relative !important;
+    padding-right: 25px !important;
+    min-height: 25px !important;
     
     .event-title {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 2px 4px;
-      font-size: 0.9em;
-      
-      .btn-cancel {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(255, 0, 0, 0.1);
-        border: #080808;
-        color: #ff0000;
-        padding: 4px;
-        cursor: pointer;
-        font-size: 1em;
-        border-radius: 50%;
-        width: 10px;
-        height: 10px;
-        line-height: 1;
-        margin-left: 4px;
-        
-        &:hover {
-          background-color: #ff0000;
-          color: white;
-        }
-      }
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      padding: 2px 5px !important;
     }
-    
-    &:hover {
-      .btn-cancel {
-        transform: scale(1.1);
+
+    .btn-cancel {
+      position: absolute !important;
+      top: 50% !important;
+      right: 5px !important;
+      transform: translateY(-50%) !important;
+      background: none !important;
+      border: none !important;
+      color: white !important;
+      padding: 2px 5px !important;
+      cursor: pointer !important;
+      opacity: 0.8 !important;
+      z-index: 100 !important;
+
+      &:hover {
+        opacity: 1 !important;
+      }
+
+      i {
+        font-size: 12px !important;
       }
     }
   }
