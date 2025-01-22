@@ -70,7 +70,6 @@
 <app-appointment-form
   *ngIf="showAppointmentForm && selectedSlot"
   [selectedDate]="selectedSlot"
-  [availableSlots]="availableSlots"
-  (appointmentSubmitted)="onAppointmentSubmitted($event)"
-  (formClosed)="closeForm()">
+  (appointmentCreated)="onAppointmentCreated()"
+  (closeForm)="onFormClosed()">
 </app-appointment-form>

@@ -65,7 +65,7 @@ export class DoctorCalendarComponent implements OnInit, OnDestroy {
           end: new Date(appointment.end),
           color: appointment.status === AppointmentStatus.CANCELLED 
             ? { primary: '#9e9e9e', secondary: '#f5f5f5' } 
-            : this.getAppointmentColor(appointment.consultationType),
+            : this.getEventColor(appointment.consultationType),
           draggable: false,
           resizable: {
             beforeStart: false,
@@ -115,16 +115,17 @@ export class DoctorCalendarComponent implements OnInit, OnDestroy {
     });
   }
 
-  getAppointmentColor(type: ConsultationType) {
+  private getEventColor(type: ConsultationType): { primary: string; secondary: string } {
     switch (type) {
-      case ConsultationType.CONSULTATION:
-        return { primary: '#1e88e5', secondary: '#e3f2fd' };
+      case ConsultationType.FIRST_VISIT:
+        return { primary: '#1e88e5', secondary: '#bbdefb' };
       case ConsultationType.FOLLOW_UP:
-        return { primary: '#7cb342', secondary: '#f1f8e9' };
-      case ConsultationType.PROCEDURE:
-        return { primary: '#fb8c00', secondary: '#fff3e0' };
+        return { primary: '#43a047', secondary: '#c8e6c9' };
+      case ConsultationType.PRESCRIPTION:
+        return { primary: '#fb8c00', secondary: '#ffe0b2' };
+      case ConsultationType.CONSULTATION:
       default:
-        return { primary: '#757575', secondary: '#f5f5f5' };
+        return { primary: '#7b1fa2', secondary: '#e1bee7' };
     }
   }
 
@@ -153,41 +154,47 @@ export class DoctorCalendarComponent implements OnInit, OnDestroy {
   }
 
   handleSlotClick(event: { date: Date }) {
-    const clickedDate = event.date;
-    if (this.isTimeSlotWithinAvailability(clickedDate) && !this.isTimeSlotDuringAbsence(clickedDate)) {
-      this.selectedSlot = clickedDate;
-      this.calculateAvailableSlots(clickedDate);
-      this.showAppointmentForm = true;
-    }
+    this.selectedSlot = event.date;
+    this.showAppointmentForm = true;
   }
 
-  calculateAvailableSlots(startTime: Date): void {
-    let availableCount = 0;
-    let currentTime = startTime;
-    
-    while (availableCount < 6) {
-      const nextSlot = addMinutes(currentTime, 30);
-      const nextSlotHour = nextSlot.getHours();
-      const nextSlotMinutes = nextSlot.getMinutes();
-      
-      const isWithinHours = nextSlotHour < 14 || (nextSlotHour === 14 && nextSlotMinutes === 0);
-      const isSlotAvailable = !this.events.some(event => {
-        const eventEnd = event.end || addMinutes(event.start, 30);
-        return currentTime >= event.start && currentTime < eventEnd;
-      });
+  onAppointmentCreated() {
+    this.loadAppointments();
+    this.closeForm();
+  }
 
-      const isWithinAvailability = this.isTimeSlotWithinAvailability(currentTime);
-      const isNotDuringAbsence = !this.isTimeSlotDuringAbsence(currentTime);
+  onFormClosed() {
+    this.closeForm();
+  }
 
-      if (!isWithinHours || !isSlotAvailable || !isWithinAvailability || !isNotDuringAbsence) {
-        break;
-      }
+  closeForm() {
+    this.showAppointmentForm = false;
+    this.selectedSlot = null;
+  }
 
-      availableCount++;
-      currentTime = nextSlot;
+  getEventTooltip(event: CalendarEventExtended): string {
+    if (!event.meta || !('consultationType' in event.meta)) {
+      return '';
     }
 
-    this.availableSlots = availableCount;
+    const appointment = event.meta as Appointment;
+    return `
+      <div class="event-tooltip">
+        <div class="tooltip-header" style="background-color: ${event.color?.primary}">
+          <strong>${appointment.consultationType}</strong>
+        </div>
+        <div class="tooltip-content">
+          <p>Patient: ${appointment.patientName}</p>
+          <p>Time: ${format(event.start, 'HH:mm')} - ${format(event.end || addMinutes(event.start, 30), 'HH:mm')}</p>
+        </div>
+      </div>
+    `;
+  }
+
+  getAppointmentCount(date: Date): number {
+    return this.events.filter(event => 
+      isSameDay(new Date(event.start), date)
+    ).length;
   }
 
   isTimeSlotWithinAvailability(time: Date): boolean {
@@ -262,53 +269,5 @@ export class DoctorCalendarComponent implements OnInit, OnDestroy {
         return time >= slotStart && time < slotEnd;
       }) || false;
     });
-  }
-
-  getEventTooltip(event: CalendarEventExtended): string {
-    if (!event.meta || !('consultationType' in event.meta)) {
-      return '';
-    }
-
-    const appointment = event.meta as Appointment;
-    return `
-      <div class="event-tooltip">
-        <div class="tooltip-header" style="background-color: ${event.color?.primary}">
-          <strong>${appointment.consultationType}</strong>
-        </div>
-        <div class="tooltip-content">
-          <p>Patient: ${appointment.patientName}</p>
-          <p>Time: ${format(event.start, 'HH:mm')} - ${format(event.end || addMinutes(event.start, 30), 'HH:mm')}</p>
-        </div>
-      </div>
-    `;
-  }
-
-  getAppointmentCount(date: Date): number {
-    return this.events.filter(event => 
-      isSameDay(new Date(event.start), date)
-    ).length;
-  }
-
-  onAppointmentSubmitted(appointment: Partial<Appointment>) {
-    if (this.selectedSlot) {
-      const newAppointment: Appointment = {
-        ...appointment as Appointment,
-        start: this.selectedSlot,
-        end: addMinutes(this.selectedSlot, appointment.duration || 30),
-        status: AppointmentStatus.SCHEDULED
-      };
-
-      this.appointmentService.addAppointment(newAppointment)
-        .pipe(takeUntil(this.destroy$))
-        .subscribe(() => {
-          this.loadAppointments();
-          this.closeForm();
-        });
-    }
-  }
-
-  closeForm(): void {
-    this.showAppointmentForm = false;
-    this.selectedSlot = null;
   }
 }

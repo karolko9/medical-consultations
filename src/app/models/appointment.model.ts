@@ -1,9 +1,9 @@
 export interface Appointment {
-  id: string;
+  id?: string;
   start: Date;
   end: Date;
-  duration: number; // Duration in minutes (30, 60, 90, 120)
-  title: string;
+  duration?: number; 
+  title?: string;
   patientName: string;
   patientGender: string;
   patientAge: number;
@@ -14,16 +14,15 @@ export interface Appointment {
 }
 
 export enum ConsultationType {
-  FIRST_VISIT = 'First Visit',
-  FOLLOW_UP = 'Follow-up',
-  CONSULTATION = 'Consultation',
-  PROCEDURE = 'Procedure',
-  PRESCRIPTION = 'PRESCRIPTION'
+  FIRST_VISIT = 'Pierwsza wizyta',
+  FOLLOW_UP = 'Wizyta kontrolna',
+  PRESCRIPTION = 'Recepta',
+  CONSULTATION = 'Konsultacja'
 }
 
 export enum AppointmentStatus {
-  SCHEDULED = 'Scheduled',
-  COMPLETED = 'Completed',
-  CANCELLED = 'Cancelled',
-  NO_SHOW = 'No Show'
+  PENDING = 'Oczekująca',
+  CONFIRMED = 'Potwierdzona',
+  CANCELLED = 'Anulowana',
+  COMPLETED = 'Zakończona'
 }
