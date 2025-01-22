@@ -35,12 +35,13 @@ export class AppointmentService {
     throw new Error('Appointment not found');
   }
 
-  cancelAppointment(id: string): Observable<Appointment> {
-    const appointment = this.appointments.find(a => a.id === id);
-    if (appointment) {
-      appointment.status = AppointmentStatus.CANCELLED;
+  cancelAppointment(id: string): Observable<void> {
+    const index = this.appointments.findIndex(a => a.id === id);
+    if (index !== -1) {
+      // Usuń wizytę z tablicy
+      this.appointments.splice(index, 1);
       this.appointmentsSubject.next(this.appointments);
-      return of(appointment);
+      return of(void 0);
     }
     throw new Error('Appointment not found');
   }

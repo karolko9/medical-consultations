@@ -6,7 +6,7 @@ import {
   CalendarWeekViewBeforeRenderEvent
 } from 'angular-calendar';
 import { addHours, startOfDay, endOfDay, addDays, isBefore, isSameDay, addMinutes, format } from 'date-fns';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject, takeUntil, firstValueFrom } from 'rxjs';
 import { AppointmentService } from '../../services/appointment.service';
 import { AvailabilityService } from '../../services/availability.service';
 import { Appointment, AppointmentStatus, ConsultationType } from '../../models/appointment.model';
@@ -60,17 +60,19 @@ export class DoctorCalendarComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe(appointments => {
         this.events = appointments.map(appointment => ({
-          title: `${appointment.consultationType}: ${appointment.patientName}`,
+          title: `${appointment.consultationType}: ${appointment.patientName}${appointment.status === AppointmentStatus.CANCELLED ? ' (Odwołana)' : ''}`,
           start: new Date(appointment.start),
           end: new Date(appointment.end),
-          color: this.getAppointmentColor(appointment.consultationType),
+          color: appointment.status === AppointmentStatus.CANCELLED 
+            ? { primary: '#9e9e9e', secondary: '#f5f5f5' } 
+            : this.getAppointmentColor(appointment.consultationType),
           draggable: false,
           resizable: {
             beforeStart: false,
             afterEnd: false
           },
           meta: appointment,
-          cssClass: 'appointment-event'
+          cssClass: `appointment-event ${appointment.status === AppointmentStatus.CANCELLED ? 'cancelled' : ''}`
         }));
         this.refresh.next();
       });
@@ -127,7 +129,27 @@ export class DoctorCalendarComponent implements OnInit, OnDestroy {
   }
 
   handleEventClick(event: { event: CalendarEventExtended }) {
-    console.log('Event clicked:', event);
+    // Kliknięcie w całe wydarzenie nie robi nic
+  }
+
+  handleCancelClick(mouseEvent: MouseEvent, event: CalendarEventExtended) {
+    mouseEvent.stopPropagation(); // Zatrzymaj propagację, żeby nie wywołać handleEventClick
+    
+    const appointment = event.meta as Appointment;
+    if (appointment) {
+      if (confirm(`Czy chcesz odwołać wizytę?\n\nPacjent: ${appointment.patientName}\nTyp: ${appointment.consultationType}\nData: ${format(event.start, 'dd.MM.yyyy HH:mm')}`)) {
+        this.cancelAppointment(appointment.id!);
+      }
+    }
+  }
+
+  async cancelAppointment(appointmentId: string) {
+    try {
+      await firstValueFrom(this.appointmentService.cancelAppointment(appointmentId));
+      this.loadAppointments(); // Odśwież listę wizyt po anulowaniu
+    } catch (error) {
+      console.error('Error cancelling appointment:', error);
+    }
   }
 
   handleSlotClick(event: { date: Date }) {

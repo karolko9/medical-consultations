@@ -28,6 +28,7 @@
       (hourSegmentClicked)="handleSlotClick($event)"
       [tooltipTemplate]="tooltipTemplate"
       [headerTemplate]="customHeader"
+      [eventTemplate]="customEventTemplate"
       (beforeViewRender)="beforeWeekViewRender($event)">
     </mwl-calendar-week-view>
   </div>
@@ -51,6 +52,17 @@
       <div class="appointment-count" *ngIf="getAppointmentCount(day.date) > 0">
         {{ getAppointmentCount(day.date) }}
       </div>
+    </div>
+  </div>
+</ng-template>
+
+<ng-template #customEventTemplate let-weekEvent="weekEvent">
+  <div class="cal-event" [ngStyle]="{ backgroundColor: weekEvent.event.color?.secondary }">
+    <div class="event-title">
+      {{ weekEvent.event.title }}
+      <button class="btn-cancel" (click)="handleCancelClick($event, weekEvent.event)" title="Anuluj wizytę">
+        <i class="fas fa-times"></i>
+      </button>
     </div>
   </div>
 </ng-template>
