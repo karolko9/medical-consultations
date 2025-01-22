@@ -90,6 +90,23 @@ export class AvailabilityComponent implements OnInit, OnDestroy {
 
       try {
         await firstValueFrom(this.availabilityService.addAvailability(availability));
+
+        // Jeśli dodajemy nieobecność, anuluj wszystkie wizyty w tym okresie
+        if (this.selectedType === AvailabilityType.ABSENCE) {
+          const startDate = new Date(formValue.startDate);
+          startDate.setHours(0, 0, 0, 0); // początek dnia
+
+          const endDate = new Date(formValue.endDate);
+          endDate.setHours(23, 59, 59, 999); // koniec dnia
+
+          console.log('Canceling appointments between:', {
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString()
+          });
+
+          await this.appointmentService.cancelAppointmentsInRange(startDate, endDate);
+        }
+
         this.availabilityForm.reset();
         this.createForm(); // Reset form with initial structure
       } catch (error) {

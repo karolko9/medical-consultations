@@ -150,4 +150,42 @@ export class AppointmentService {
 
     return appointments;
   }
+
+  async cancelAppointmentsInRange(startDate: Date, endDate: Date): Promise<void> {
+    const appointments = await this.getAppointmentsSnapshot();
+    
+    this.log('Checking appointments in range:', {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      totalAppointments: appointments.length
+    });
+
+    const appointmentsToCancel = appointments.filter(appointment => {
+      const appointmentStart = new Date(appointment.start);
+      const appointmentEnd = new Date(appointment.end);
+
+      const shouldCancel = (
+        (appointmentStart >= startDate && appointmentStart <= endDate) || // wizyta zaczyna się w okresie nieobecności
+        (appointmentEnd >= startDate && appointmentEnd <= endDate) || // wizyta kończy się w okresie nieobecności
+        (appointmentStart <= startDate && appointmentEnd >= endDate) // wizyta obejmuje cały okres nieobecności
+      );
+
+      this.log('Checking appointment:', {
+        appointmentStart: appointmentStart.toISOString(),
+        appointmentEnd: appointmentEnd.toISOString(),
+        shouldCancel
+      });
+
+      return shouldCancel;
+    });
+
+    this.log('Found appointments to cancel:', appointmentsToCancel.length);
+
+    for (const appointment of appointmentsToCancel) {
+      if (appointment.id) {
+        this.log('Canceling appointment:', appointment.id);
+        await this.cancelAppointment(appointment.id).toPromise();
+      }
+    }
+  }
 }
