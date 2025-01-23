@@ -1,11 +1,11 @@
 import { Component, OnInit, Input, Output, EventEmitter } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, AbstractControl } from '@angular/forms';
 import { Appointment, ConsultationType, AppointmentStatus } from '../../models/appointment.model';
 import { AppointmentService } from '../../services/appointment.service';
 import { CartService } from '../../services/cart.service';
 import { AvailabilityService } from '../../services/availability.service';
+import { DoctorAvailability, TimeSlot } from '../../models/availability.model';
 import { firstValueFrom } from 'rxjs';
-import { DoctorAvailability, AvailabilityType } from '../../models/availability.model';
 
 @Component({
   selector: 'app-appointment-form',
@@ -24,7 +24,7 @@ export class AppointmentFormComponent implements OnInit {
   allDurations = [30, 60, 90, 120];
   availableDurations: number[] = [];
   loadingDurations = false;
-  availabilities: DoctorAvailability[] = [];
+  availableTimeSlots: TimeSlot[] = [];
 
   constructor(
     private fb: FormBuilder,
@@ -42,141 +42,45 @@ export class AppointmentFormComponent implements OnInit {
     });
   }
 
-  ngOnInit(): void {
+  ngOnInit() {
     this.loadAvailabilities();
   }
 
-  private async loadAvailabilities() {
-    try {
-      this.availabilities = await firstValueFrom(this.availabilityService.getAvailabilities());
-      this.checkAvailableDurations();
-    } catch (error) {
-      console.error('Error loading availabilities:', error);
-      this.error = 'Wystąpił błąd podczas ładowania dostępności lekarza';
-    }
-  }
-
-  private isWithinAvailability(startDate: Date, endDate: Date): boolean {
-    const startTime = startDate.getHours() * 60 + startDate.getMinutes();
-    const endTime = endDate.getHours() * 60 + endDate.getMinutes();
-    const dayOfWeek = startDate.getDay();
-    const dateString = startDate.toISOString().split('T')[0];
-
-    console.log('Checking availability for:', {
-      startDate,
-      endDate,
-      startTime,
-      endTime,
-      dayOfWeek,
-      dateString
-    });
-
-    console.log('Current availabilities:', this.availabilities);
-
-    // Sprawdź czy termin nie wypada w czasie nieobecności
-    const absences = this.availabilities.filter(a => 
-      a.type === AvailabilityType.ABSENCE &&
-      new Date(a.startDate) <= startDate &&
-      new Date(a.endDate) >= endDate
-    );
-    console.log('Found absences:', absences);
-    if (absences.length > 0) {
-      console.log('Appointment falls within absence period');
-      return false;
-    }
-
-    // Sprawdź dostępności jednorazowe
-    const oneTimeAvailabilities = this.availabilities.filter(a => {
-      if (a.type !== AvailabilityType.ONE_TIME) return false;
-      
-      const availabilityStart = new Date(a.startDate);
-      const availabilityEnd = new Date(a.endDate);
-      const appointmentDate = new Date(dateString);
-      
-      console.log('Checking one-time availability:', {
-        availabilityStart,
-        availabilityEnd,
-        appointmentDate,
-        availability: a
+  loadAvailabilities() {
+    this.availabilityService.getDoctorAvailabilityForDay(this.selectedDate)
+      .subscribe(availableSlots => {
+        this.availableTimeSlots = availableSlots;
+        this.checkAvailableDurations();
       });
-      
-      return appointmentDate >= availabilityStart && appointmentDate <= availabilityEnd;
-    });
-    console.log('One time availabilities for this date:', oneTimeAvailabilities);
-
-    for (const availability of oneTimeAvailabilities) {
-      for (const slot of availability.timeSlots || []) {
-        const [slotStartHour, slotStartMinute] = slot.start.split(':').map(Number);
-        const [slotEndHour, slotEndMinute] = slot.end.split(':').map(Number);
-        const slotStartTime = slotStartHour * 60 + slotStartMinute;
-        const slotEndTime = slotEndHour * 60 + slotEndMinute;
-
-        console.log('Checking one-time slot:', {
-          slot,
-          slotStartTime,
-          slotEndTime,
-          startTime,
-          endTime
-        });
-
-        // Sprawdź czy wizyta zaczyna się w dostępnym czasie
-        if (startTime >= slotStartTime && startTime < slotEndTime) {
-          console.log('Found matching one-time slot');
-          return true;
-        }
-      }
-    }
-
-    // Sprawdź dostępności cykliczne
-    const recurringAvailabilities = this.availabilities.filter(a => 
-      a.type === AvailabilityType.RECURRING &&
-      new Date(a.startDate) <= startDate &&
-      new Date(a.endDate) >= endDate &&
-      a.weekDays?.includes(dayOfWeek)
-    );
-    console.log('Recurring availabilities for this day:', recurringAvailabilities);
-
-    for (const availability of recurringAvailabilities) {
-      for (const slot of availability.timeSlots || []) {
-        const [slotStartHour, slotStartMinute] = slot.start.split(':').map(Number);
-        const [slotEndHour, slotEndMinute] = slot.end.split(':').map(Number);
-        const slotStartTime = slotStartHour * 60 + slotStartMinute;
-        const slotEndTime = slotEndHour * 60 + slotEndMinute;
-
-        console.log('Checking recurring slot:', {
-          slot,
-          slotStartTime,
-          slotEndTime,
-          startTime,
-          endTime
-        });
-
-        // Sprawdź czy wizyta zaczyna się w dostępnym czasie
-        if (startTime >= slotStartTime && startTime < slotEndTime) {
-          console.log('Found matching recurring slot');
-          return true;
-        }
-      }
-    }
-
-    console.log('No available slots found');
-    return false;
   }
 
-  private isEndTimeValid(endDate: Date): boolean {
-    const endTime = endDate.getHours() * 60 + endDate.getMinutes();
-    const maxEndTime = 14 * 60; // 14:00
-    return endTime <= maxEndTime;
+  isWithinAvailability(startDate: Date, endDate: Date): boolean {
+    if (!this.availableTimeSlots.length) return false;
+
+    const startTime = startDate.getHours().toString().padStart(2, '0') + ':' + 
+                     startDate.getMinutes().toString().padStart(2, '0');
+    const endTime = endDate.getHours().toString().padStart(2, '0') + ':' + 
+                   endDate.getMinutes().toString().padStart(2, '0');
+
+    return this.availableTimeSlots.some(slot => 
+      startTime >= slot.start && endTime <= slot.end
+    );
+  }
+
+  isEndTimeValid(endDate: Date): boolean {
+    const endHour = endDate.getHours();
+    const endMinutes = endDate.getMinutes();
+    return endHour < 14 || (endHour === 14 && endMinutes === 0);
   }
 
   async checkAvailableDurations() {
     this.loadingDurations = true;
     this.availableDurations = [];
-    
+    this.error = null;
+
     try {
-      const startDate = new Date(this.selectedDate);
-      
       for (const duration of this.allDurations) {
+        const startDate = new Date(this.selectedDate);
         const endDate = new Date(startDate.getTime() + duration * 60000);
         
         // Sprawdź czy koniec wizyty nie przekracza 14:00
@@ -189,7 +93,10 @@ export class AppointmentFormComponent implements OnInit {
           continue;
         }
 
-        const hasConflict = await this.appointmentService.hasTimeSlotConflict(startDate, endDate);
+        const hasConflict = await firstValueFrom(
+          this.appointmentService.hasTimeSlotConflict(startDate, endDate)
+        );
+        
         if (!hasConflict) {
           this.availableDurations.push(duration);
         }
@@ -247,7 +154,7 @@ export class AppointmentFormComponent implements OnInit {
         };
 
         const savedAppointment = await this.appointmentService.addAppointment(appointment);
-        this.cartService.addToCart(savedAppointment);
+        await this.cartService.addToCart(savedAppointment);
         this.appointmentCreated.emit();
         this.closeForm.emit();
       } catch (error: any) {
@@ -267,14 +174,12 @@ export class AppointmentFormComponent implements OnInit {
     return this.appointmentForm.controls;
   }
 
-  get formattedDate(): string {
+  formattedDate(): string {
     return this.selectedDate.toLocaleDateString('pl-PL', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      day: 'numeric'
     });
   }
 }

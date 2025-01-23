@@ -10,8 +10,13 @@
     },
     "appointments": {
       ".read": "auth != null",
-      "$appointmentId": {
-        ".write": "auth != null && (data.child('patientId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'DOCTOR' || root.child('users').child(auth.uid).child('role').val() === 'ADMIN')"
+      "$doctorId": {
+        ".read": "auth != null && (auth.uid === $doctorId || root.child('users').child(auth.uid).child('role').val() === 'ADMIN')",
+        ".write": "auth != null && (auth.uid === $doctorId || root.child('users').child(auth.uid).child('role').val() === 'ADMIN')",
+        "$appointmentId": {
+          ".read": "auth != null && (auth.uid === $doctorId || data.child('patientId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'ADMIN')",
+          ".write": "auth != null && (auth.uid === $doctorId || data.child('patientId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'ADMIN')"
+        }
       }
     },
     "doctors": {
@@ -22,11 +27,9 @@
     },
     "availabilities": {
       ".read": true,
+      ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'DOCTOR'",
       "$doctorId": {
-        ".write": "auth != null && (auth.uid === $doctorId || root.child('users').child(auth.uid).child('role').val() === 'ADMIN')",
-        "$day": {
-          ".write": "auth != null && (auth.uid === $doctorId || root.child('users').child(auth.uid).child('role').val() === 'ADMIN')"
-        }
+        ".write": "auth != null && (auth.uid === $doctorId || root.child('users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('users').child(auth.uid).child('role').val() === 'DOCTOR')"
       }
     },
     "reviews": {
