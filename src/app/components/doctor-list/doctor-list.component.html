@@ -1,0 +1,78 @@
+<div class="doctor-list">
+  <div class="container py-4">
+    <h1 class="mb-4">Lista lekarzy</h1>
+
+    <!-- Search and filters -->
+    <div class="search-filters mb-4">
+      <div class="input-group">
+        <input 
+          type="text" 
+          class="form-control" 
+          placeholder="Szukaj lekarza..."
+          [formControl]="searchControl"
+        >
+        <span class="input-group-text">
+          <i class="fas fa-search"></i>
+        </span>
+      </div>
+    </div>
+
+    <!-- Error message -->
+    <div class="alert alert-danger" *ngIf="error | async">
+      {{ error | async }}
+    </div>
+
+    <!-- Doctor cards -->
+    <div class="row g-4">
+      <!-- Loading placeholder -->
+      <div class="col-12" *ngIf="loading | async">
+        <div class="card">
+          <div class="card-body text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- No doctors found -->
+      <div class="col-12" *ngIf="!(loading | async) && (doctors$ | async)?.length === 0">
+        <div class="card">
+          <div class="card-body text-center py-5">
+            <i class="fas fa-user-md fa-3x text-muted mb-3"></i>
+            <h3>Brak dostępnych lekarzy</h3>
+            <p class="text-muted">Spróbuj zmienić kryteria wyszukiwania.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Doctor cards -->
+      <div class="col-md-6 col-lg-4" *ngFor="let doctor of doctors$ | async">
+        <div class="card h-100">
+          <div class="card-body">
+            <div class="d-flex align-items-center mb-3">
+              <div class="doctor-avatar me-3">
+                <i class="fas fa-user-md fa-2x"></i>
+              </div>
+              <div>
+                <h5 class="card-title mb-1">{{ doctor.displayName || 'Brak nazwy' }}</h5>
+                <p class="text-muted mb-0">{{ doctor.email }}</p>
+              </div>
+            </div>
+            <p class="card-text">
+              <small class="text-muted">
+                <i class="fas fa-calendar-check me-1"></i>
+                Dołączył(a): {{ doctor.createdAt ? (doctor.createdAt | date:'mediumDate') : 'Data nieznana' }}
+              </small>
+            </p>
+          </div>
+          <div class="card-footer bg-transparent">
+            <button class="btn btn-primary w-100" (click)="onMakeAppointment(doctor)">
+              <i class="fas fa-calendar-plus me-2"></i>Umów wizytę
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

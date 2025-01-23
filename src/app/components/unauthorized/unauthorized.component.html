@@ -1,0 +1,20 @@
+<div class="unauthorized-container">
+  <div class="unauthorized-card">
+    <div class="card-header">
+      <h2>Brak uprawnień</h2>
+    </div>
+    <div class="card-content">
+      <p>Nie masz wystarczających uprawnień, aby uzyskać dostęp do tej strony.</p>
+      
+      <div *ngIf="requiredRole && currentRole" class="role-info">
+        <p>Wymagana rola: <strong>{{ getRoleDisplay(requiredRole) }}</strong></p>
+        <p>Twoja rola: <strong>{{ getRoleDisplay(currentRole) }}</strong></p>
+      </div>
+
+      <p>Skontaktuj się z administratorem, jeśli uważasz, że powinieneś mieć dostęp do tej strony.</p>
+    </div>
+    <div class="card-actions">
+      <button class="btn-primary" routerLink="/">Wróć do strony głównej</button>
+    </div>
+  </div>
+</div>

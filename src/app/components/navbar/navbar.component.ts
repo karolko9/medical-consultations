@@ -1,8 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { CartService } from '../../services/cart.service';
 import { AuthService } from '../../services/auth.service';
+import { CartService } from '../../services/cart.service';
 import { User, UserRole } from '../../models/user.model';
 
 @Component({
@@ -10,33 +10,28 @@ import { User, UserRole } from '../../models/user.model';
   templateUrl: './navbar.component.html',
   styleUrls: ['./navbar.component.scss']
 })
-export class NavbarComponent implements OnInit {
-  cartItemsCount$: Observable<number>;
-  currentUser$: Observable<User | null>;
-  isAdmin$: Observable<boolean>;
-  isDoctor$: Observable<boolean>;
+export class NavbarComponent {
   isPatient$: Observable<boolean>;
+  isDoctor$: Observable<boolean>;
+  isAdmin$: Observable<boolean>;
+  cartItemsCount$: Observable<number>;
 
   constructor(
-    private cartService: CartService,
-    private authService: AuthService
+    private authService: AuthService,
+    private cartService: CartService
   ) {
-    this.cartItemsCount$ = this.cartService.getCartItemsCount();
-    this.currentUser$ = this.authService.currentUser$;
-    
-    // Role-based observables
-    this.isAdmin$ = this.currentUser$.pipe(
-      map((user: User | null) => user?.role === UserRole.ADMIN)
+    this.isPatient$ = this.authService.currentUser$.pipe(
+      map(user => user?.role === UserRole.PATIENT)
     );
-    
-    this.isDoctor$ = this.currentUser$.pipe(
-      map((user: User | null) => user?.role === UserRole.DOCTOR)
-    );
-    
-    this.isPatient$ = this.currentUser$.pipe(
-      map((user: User | null) => user?.role === UserRole.PATIENT)
-    );
-  }
 
-  ngOnInit(): void {}
+    this.isDoctor$ = this.authService.currentUser$.pipe(
+      map(user => user?.role === UserRole.DOCTOR)
+    );
+
+    this.isAdmin$ = this.authService.currentUser$.pipe(
+      map(user => user?.role === UserRole.ADMIN)
+    );
+
+    this.cartItemsCount$ = this.cartService.getCartItemsCount();
+  }
 }

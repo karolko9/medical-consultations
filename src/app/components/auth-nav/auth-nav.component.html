@@ -1,37 +1,38 @@
-<ng-container *ngIf="currentUser$ | async as user; else loginButtons">
-  <div class="user-info">
-    <span class="user-name">{{ user.displayName }}</span>
-    <div class="user-role" [ngSwitch]="user.role">
-      <span *ngSwitchCase="UserRole.ADMIN" class="badge bg-danger">Administrator</span>
-      <span *ngSwitchCase="UserRole.DOCTOR" class="badge bg-primary">Lekarz</span>
-      <span *ngSwitchCase="UserRole.PATIENT" class="badge bg-success">Pacjent</span>
-    </div>
-    <div class="nav-links" [ngSwitch]="user.role">
-      <!-- Admin Links -->
-      <ng-container *ngSwitchCase="UserRole.ADMIN">
-        <a routerLink="/admin/users" class="nav-link">Użytkownicy</a>
-        <a routerLink="/admin/doctors" class="nav-link">Zarządzaj lekarzami</a>
-      </ng-container>
-      
-      <!-- Doctor Links -->
-      <ng-container *ngSwitchCase="UserRole.DOCTOR">
-        <a routerLink="/doctor/calendar" class="nav-link">Mój kalendarz</a>
-        <a routerLink="/doctor/availability" class="nav-link">Dostępność</a>
-      </ng-container>
-      
-      <!-- Patient Links -->
-      <ng-container *ngSwitchCase="UserRole.PATIENT">
-        <a routerLink="/patient/appointments" class="nav-link">Moje wizyty</a>
-        <a routerLink="/patient/history" class="nav-link">Historia</a>
-      </ng-container>
-    </div>
-    <button class="btn btn-outline-light" (click)="logout()">Wyloguj</button>
-  </div>
-</ng-container>
+<ul class="navbar-nav">
+  <ng-container *ngIf="currentUser$ | async as user; else loginRegister">
+    <!-- User is logged in -->
+    <li class="nav-item dropdown">
+      <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+        <i class="fas fa-user me-1"></i>
+        {{ user.displayName }}
+      </a>
+      <ul class="dropdown-menu dropdown-menu-end">
+        <li>
+          <a class="dropdown-item" routerLink="/profile">
+            <i class="fas fa-id-card me-2"></i>Profil
+          </a>
+        </li>
+        <li><hr class="dropdown-divider"></li>
+        <li>
+          <a class="dropdown-item text-danger" href="#" (click)="logout(); $event.preventDefault()">
+            <i class="fas fa-sign-out-alt me-2"></i>Wyloguj się
+          </a>
+        </li>
+      </ul>
+    </li>
+  </ng-container>
 
-<ng-template #loginButtons>
-  <div class="auth-buttons">
-    <a routerLink="/login" class="btn btn-outline-light me-2">Zaloguj się</a>
-    <a routerLink="/register" class="btn btn-light">Zarejestruj się</a>
-  </div>
-</ng-template>
+  <!-- Login/Register template -->
+  <ng-template #loginRegister>
+    <li class="nav-item">
+      <a class="nav-link" routerLink="/login" routerLinkActive="active">
+        <i class="fas fa-sign-in-alt me-1"></i>Logowanie
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" routerLink="/register" routerLinkActive="active">
+        <i class="fas fa-user-plus me-1"></i>Rejestracja
+      </a>
+    </li>
+  </ng-template>
+</ul>

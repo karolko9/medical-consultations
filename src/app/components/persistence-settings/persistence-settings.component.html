@@ -1,0 +1,47 @@
+<div class="persistence-settings">
+  <h2>Ustawienia persystencji</h2>
+  <p class="text-muted mb-4">
+    Wybierz tryb przechowywania stanu logowania użytkowników w aplikacji.
+  </p>
+
+  <div class="mode-cards">
+    <!-- Local Storage -->
+    <div class="mode-card" [class.active]="currentMode === PersistenceMode.LOCAL" (click)="changePersistenceMode(PersistenceMode.LOCAL)">
+      <div class="mode-icon">
+        <i class="fas fa-database"></i>
+      </div>
+      <h3>Local Storage</h3>
+      <p>Stan logowania jest zachowywany nawet po zamknięciu przeglądarki.</p>
+    </div>
+
+    <!-- Session Storage -->
+    <div class="mode-card" [class.active]="currentMode === PersistenceMode.SESSION" (click)="changePersistenceMode(PersistenceMode.SESSION)">
+      <div class="mode-icon">
+        <i class="fas fa-clock"></i>
+      </div>
+      <h3>Session Storage</h3>
+      <p>Stan logowania jest zachowywany tylko do zamknięcia przeglądarki.</p>
+    </div>
+
+    <!-- None (In Memory) -->
+    <div class="mode-card" [class.active]="currentMode === PersistenceMode.NONE" (click)="changePersistenceMode(PersistenceMode.NONE)">
+      <div class="mode-icon">
+        <i class="fas fa-memory"></i>
+      </div>
+      <h3>In Memory</h3>
+      <p>Stan logowania jest tracony po odświeżeniu strony.</p>
+    </div>
+  </div>
+
+  <!-- Loading indicator -->
+  <div class="loading-overlay" *ngIf="loading">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+  </div>
+
+  <!-- Error message -->
+  <div class="alert alert-danger mt-3" *ngIf="error">
+    {{ error }}
+  </div>
+</div>

@@ -1,17 +1,17 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { Router } from '@angular/router';
-import { AuthService } from '../../services/auth.service';
-import { User, UserRole } from '../../models/user.model';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
+import { AuthService } from '../../services/auth.service';
+import { User } from '../../models/user.model';
 
 @Component({
   selector: 'app-auth-nav',
   templateUrl: './auth-nav.component.html',
   styleUrls: ['./auth-nav.component.scss']
 })
-export class AuthNavComponent implements OnInit {
+export class AuthNavComponent {
   currentUser$: Observable<User | null>;
-  UserRole = UserRole;
 
   constructor(
     private authService: AuthService,
@@ -20,9 +20,7 @@ export class AuthNavComponent implements OnInit {
     this.currentUser$ = this.authService.currentUser$;
   }
 
-  ngOnInit(): void {}
-
-  async logout() {
+  async logout(): Promise<void> {
     try {
       await this.authService.logout();
       await this.router.navigate(['/login']);

@@ -1,6 +1,9 @@
 {
   "rules": {
+    ".read": "auth != null",
+    ".write": "auth != null",
     "users": {
+      ".read": "query.orderByChild === 'role' && query.equalTo === 'DOCTOR'",
       "$uid": {
         ".read": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'ADMIN')",
         ".write": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'ADMIN')"
@@ -19,15 +22,24 @@
       }
     },
     "availabilities": {
-      ".read": "auth != null",
+      ".read": true,
       "$doctorId": {
-        ".write": "auth != null && (auth.uid === $doctorId || root.child('users').child(auth.uid).child('role').val() === 'ADMIN')"
+        ".write": "auth != null && (auth.uid === $doctorId || root.child('users').child(auth.uid).child('role').val() === 'ADMIN')",
+        "$day": {
+          ".write": "auth != null && (auth.uid === $doctorId || root.child('users').child(auth.uid).child('role').val() === 'ADMIN')"
+        }
       }
     },
     "reviews": {
       ".read": true,
       "$reviewId": {
         ".write": "auth != null && (!data.exists() || data.child('patientId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'ADMIN')"
+      }
+    },
+    "config": {
+      "persistence": {
+        ".read": true,
+        ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'ADMIN'"
       }
     }
   }

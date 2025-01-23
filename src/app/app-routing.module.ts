@@ -7,12 +7,29 @@ import { DoctorCalendarComponent } from './components/doctor-calendar/doctor-cal
 import { AvailabilityComponent } from './components/availability/availability.component';
 import { ReservationCartComponent } from './components/reservation-cart/reservation-cart.component';
 import { CartPageComponent } from './pages/cart-page/cart-page.component';
+import { PersistenceSettingsComponent } from './components/persistence-settings/persistence-settings.component';
+import { DoctorListComponent } from './components/doctor-list/doctor-list.component';
+import { UnauthorizedComponent } from './components/unauthorized/unauthorized.component';
 import { UserRole } from './models/user.model';
 
 const routes: Routes = [
+  // Public routes
   { path: '', redirectTo: '/doctors', pathMatch: 'full' },
   { path: 'login', component: LoginComponent },
   { path: 'register', component: RegisterComponent },
+  { path: 'doctors', component: DoctorListComponent },
+  { path: 'unauthorized', component: UnauthorizedComponent },
+  
+  // Patient routes
+  { 
+    path: 'patient',
+    canActivate: [AuthGuard],
+    data: { role: UserRole.PATIENT },
+    children: [
+      { path: 'appointments', component: ReservationCartComponent },
+      { path: 'cart', component: CartPageComponent }
+    ]
+  },
   
   // Doctor routes
   {
@@ -25,20 +42,17 @@ const routes: Routes = [
     ]
   },
 
-  // Patient routes
+  // Admin routes
   {
-    path: 'patient',
+    path: 'admin',
     canActivate: [AuthGuard],
-    data: { role: UserRole.PATIENT },
+    data: { role: UserRole.ADMIN },
     children: [
-      { path: 'appointments', component: ReservationCartComponent }
+      { path: 'persistence', component: PersistenceSettingsComponent }
     ]
   },
 
-  // Public routes
-  { path: 'cart', component: CartPageComponent, canActivate: [AuthGuard], data: { role: UserRole.PATIENT } },
-
-  // Catch all route
+  // Fallback route
   { path: '**', redirectTo: '/doctors' }
 ];
 
