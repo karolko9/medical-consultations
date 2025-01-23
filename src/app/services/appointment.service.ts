@@ -114,35 +114,71 @@ export class AppointmentService {
   }
 
   hasTimeSlotConflict(start: Date, end: Date): Observable<boolean> {
+    this.log('Sprawdzanie konfliktu terminów', {
+      start: start.toISOString(),
+      end: end.toISOString()
+    });
+
     return this.appointmentsSubject.pipe(
-      map(appointments => appointments.some(appointment => {
-        if (appointment.status === AppointmentStatus.CANCELLED) {
-          return false;
-        }
+      map(appointments => {
+        const conflicts = appointments.filter(appointment => {
+          if (appointment.status === AppointmentStatus.CANCELLED) {
+            return false;
+          }
 
-        const appointmentStart = new Date(appointment.start);
-        const appointmentEnd = new Date(appointment.end);
+          const appointmentStart = new Date(appointment.start);
+          const appointmentEnd = new Date(appointment.end);
 
-        return (
-          (start >= appointmentStart && start < appointmentEnd) ||
-          (end > appointmentStart && end <= appointmentEnd) ||
-          (start <= appointmentStart && end >= appointmentEnd)
-        );
-      }))
+          const hasConflict = (
+            (start >= appointmentStart && start < appointmentEnd) ||
+            (end > appointmentStart && end <= appointmentEnd) ||
+            (start <= appointmentStart && end >= appointmentEnd)
+          );
+
+          if (hasConflict) {
+            this.log('Znaleziono konflikt z wizytą', {
+              appointmentId: appointment.id,
+              appointmentStart: appointmentStart.toISOString(),
+              appointmentEnd: appointmentEnd.toISOString()
+            });
+          }
+
+          return hasConflict;
+        });
+
+        this.log('Wynik sprawdzania konfliktów', {
+          totalAppointments: appointments.length,
+          conflictsFound: conflicts.length
+        });
+
+        return conflicts.length > 0;
+      })
     );
   }
 
-  addAppointment(appointment: Appointment): Promise<Appointment> {
+  addAppointment(appointment: Appointment & { doctorId?: string }): Promise<Appointment> {
+    this.log('Próba dodania nowej wizyty', {
+      appointment,
+      doctorId: appointment.doctorId
+    });
+
     return firstValueFrom(
       this.authService.currentUser$.pipe(
         switchMap(user => {
           if (!user) {
-            return throwError(() => new Error('User not authenticated'));
+            this.log('Błąd: Użytkownik nie jest zalogowany');
+            return throwError(() => new Error('Użytkownik nie jest zalogowany'));
+          }
+
+          if (!appointment.doctorId) {
+            this.log('Błąd: Brak ID lekarza');
+            return throwError(() => new Error('Wymagane jest ID lekarza'));
           }
 
           return from(this.hasTimeSlotConflict(new Date(appointment.start), new Date(appointment.end))).pipe(
             map(hasConflict => {
               if (hasConflict) {
+                this.log('Błąd: Konflikt terminów');
                 throw new Error('Wybrany termin koliduje z inną wizytą');
               }
               return appointment;
@@ -150,24 +186,28 @@ export class AppointmentService {
             map(appointmentToSave => {
               const extendedAppointment: ExtendedAppointment = {
                 ...appointmentToSave,
-                patientId: user.role === UserRole.PATIENT ? user.uid : undefined,
-                doctorId: user.role === UserRole.DOCTOR ? user.uid : this.currentDoctorId,
+                patientId: user.uid,
                 status: AppointmentStatus.PENDING
               };
+              this.log('Przygotowano rozszerzoną wizytę', extendedAppointment);
               return extendedAppointment;
             }),
             switchMap(extendedAppointment => {
-              const doctorId = extendedAppointment.doctorId;
-              if (!doctorId) {
-                return throwError(() => new Error('Doctor ID is required'));
-              }
-              const appointmentsRef = ref(this.db, `${this.dbPath}/${doctorId}`);
+              const appointmentsRef = ref(this.db, `${this.dbPath}/${appointment.doctorId}`);
+              this.log('Zapisywanie wizyty w bazie', {
+                path: `${this.dbPath}/${appointment.doctorId}`,
+                appointment: extendedAppointment
+              });
               return from(push(appointmentsRef, extendedAppointment));
             }),
-            map(ref => ({
-              ...appointment,
-              id: ref.key!
-            }))
+            map(ref => {
+              const savedAppointment = {
+                ...appointment,
+                id: ref.key!
+              };
+              this.log('Wizyta została zapisana', savedAppointment);
+              return savedAppointment;
+            })
           );
         })
       )

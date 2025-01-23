@@ -1,0 +1,46 @@
+<div class="notifications-container">
+  <!-- Licznik nieprzeczytanych powiadomień -->
+  <div class="unread-badge" *ngIf="(unreadCount$ | async) as unreadCount">
+    <span class="badge bg-danger" *ngIf="unreadCount > 0">{{ unreadCount }}</span>
+  </div>
+
+  <!-- Lista powiadomień -->
+  <div class="notifications-list">
+    <ng-container *ngIf="(notifications$ | async) as notifications">
+      <!-- Brak powiadomień -->
+      <div class="no-notifications" *ngIf="notifications.length === 0">
+        <i class="fas fa-bell-slash fa-2x text-muted"></i>
+        <p class="text-muted mt-2">Brak powiadomień</p>
+      </div>
+
+      <!-- Lista powiadomień -->
+      <div class="notification-item" 
+           *ngFor="let notification of notifications"
+           [class.unread]="!notification.isRead"
+           (click)="markAsRead(notification)">
+        <!-- Ikona powiadomienia -->
+        <div class="notification-icon" [class]="getNotificationColor(notification.type)">
+          <i class="fas fa-{{ getNotificationIcon(notification.type) }}"></i>
+        </div>
+
+        <!-- Treść powiadomienia -->
+        <div class="notification-content">
+          <div class="notification-message">{{ notification.message }}</div>
+          <div class="notification-meta">
+            <span class="notification-time">{{ formatDate(notification.timestamp) }}</span>
+            <ng-container *ngIf="notification.appointmentDate">
+              <span class="notification-appointment">
+                Wizyta: {{ formatDate(notification.appointmentDate) }}
+              </span>
+            </ng-container>
+          </div>
+        </div>
+
+        <!-- Wskaźnik nieprzeczytanego powiadomienia -->
+        <div class="unread-indicator" *ngIf="!notification.isRead">
+          <span class="badge bg-primary"></span>
+        </div>
+      </div>
+    </ng-container>
+  </div>
+</div> 

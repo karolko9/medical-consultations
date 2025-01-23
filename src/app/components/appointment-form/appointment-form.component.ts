@@ -26,6 +26,7 @@ export class AppointmentFormComponent implements OnInit {
   availableDurations: number[] = [];
   loadingDurations = false;
   availableTimeSlots: TimeSlot[] = [];
+  private DEBUG = true;
 
   constructor(
     private fb: FormBuilder,
@@ -43,19 +44,44 @@ export class AppointmentFormComponent implements OnInit {
     });
   }
 
-  ngOnInit() {
-    if (this.doctorId) {
-      this.loadAvailabilities();
+  private log(...args: any[]) {
+    if (this.DEBUG) {
+      console.log('[AppointmentForm]', ...args);
     }
+  }
+
+  ngOnInit() {
+    this.log('Inicjalizacja formularza wizyty', { doctorId: this.doctorId });
+    if (!this.doctorId) {
+      console.error('DoctorId is required but not provided');
+      this.error = 'Błąd: Nie można utworzyć wizyty bez identyfikatora lekarza';
+      return;
+    }
+    this.loadAvailabilities();
   }
 
   loadAvailabilities() {
     if (!this.doctorId) return;
     
+    this.log('Ładowanie dostępności dla lekarza', { 
+      doctorId: this.doctorId, 
+      selectedDate: this.selectedDate 
+    });
+
     this.availabilityService.getDoctorAvailabilityForDay(this.selectedDate, this.doctorId)
-      .subscribe(availableSlots => {
-        this.availableTimeSlots = availableSlots;
-        this.checkAvailableDurations();
+      .subscribe({
+        next: (availableSlots) => {
+          this.log('Załadowano dostępne sloty', { 
+            count: availableSlots.length, 
+            slots: availableSlots 
+          });
+          this.availableTimeSlots = availableSlots;
+          this.checkAvailableDurations();
+        },
+        error: (error) => {
+          this.log('Błąd podczas ładowania dostępności', error);
+          this.error = 'Wystąpił błąd podczas ładowania dostępnych terminów';
+        }
       });
   }
 
@@ -83,18 +109,26 @@ export class AppointmentFormComponent implements OnInit {
     this.availableDurations = [];
     this.error = null;
 
+    this.log('Sprawdzanie dostępnych długości wizyt');
+
     try {
       for (const duration of this.allDurations) {
         const startDate = new Date(this.selectedDate);
         const endDate = new Date(startDate.getTime() + duration * 60000);
         
-        // Sprawdź czy koniec wizyty nie przekracza 14:00
+        this.log('Sprawdzanie długości wizyty', { 
+          duration, 
+          startDate: startDate.toISOString(), 
+          endDate: endDate.toISOString() 
+        });
+
         if (!this.isEndTimeValid(endDate)) {
+          this.log('Wizyta kończy się po 14:00, pomijanie');
           continue;
         }
 
-        // Sprawdź czy cała wizyta mieści się w dostępnych godzinach
         if (!this.isWithinAvailability(startDate, endDate)) {
+          this.log('Wizyta poza dostępnością lekarza, pomijanie');
           continue;
         }
 
@@ -102,10 +136,19 @@ export class AppointmentFormComponent implements OnInit {
           this.appointmentService.hasTimeSlotConflict(startDate, endDate)
         );
         
+        this.log('Sprawdzono konflikt terminów', { 
+          duration, 
+          hasConflict 
+        });
+
         if (!hasConflict) {
           this.availableDurations.push(duration);
         }
       }
+
+      this.log('Znalezione dostępne długości wizyt', { 
+        availableDurations: this.availableDurations 
+      });
 
       if (this.availableDurations.length === 0) {
         this.error = 'Brak dostępnych terminów o wybranej godzinie';
@@ -119,7 +162,7 @@ export class AppointmentFormComponent implements OnInit {
         }
       }
     } catch (error) {
-      console.error('Error checking available durations:', error);
+      this.log('Błąd podczas sprawdzania dostępnych długości wizyt', error);
       this.error = 'Wystąpił błąd podczas sprawdzania dostępnych terminów';
     } finally {
       this.loadingDurations = false;
@@ -127,6 +170,11 @@ export class AppointmentFormComponent implements OnInit {
   }
 
   async onSubmit() {
+    if (!this.doctorId) {
+      this.error = 'Błąd: Nie można utworzyć wizyty bez identyfikatora lekarza';
+      return;
+    }
+
     if (this.appointmentForm.valid && !this.submitting) {
       this.submitting = true;
       this.error = null;
@@ -136,12 +184,10 @@ export class AppointmentFormComponent implements OnInit {
         const startDate = new Date(this.selectedDate);
         const endDate = new Date(startDate.getTime() + formValue.duration * 60000);
 
-        // Sprawdź czy koniec wizyty nie przekracza 14:00
         if (!this.isEndTimeValid(endDate)) {
           throw new Error('Wizyta nie może kończyć się później niż 14:00');
         }
 
-        // Sprawdź czy cała wizyta mieści się w dostępnych godzinach
         if (!this.isWithinAvailability(startDate, endDate)) {
           throw new Error('Wizyta wykracza poza godziny przyjęć lekarza');
         }
@@ -158,12 +204,17 @@ export class AppointmentFormComponent implements OnInit {
           status: AppointmentStatus.PENDING
         };
 
-        const savedAppointment = await this.appointmentService.addAppointment(appointment);
+        const extendedAppointment = {
+          ...appointment,
+          doctorId: this.doctorId
+        };
+
+        const savedAppointment = await this.appointmentService.addAppointment(extendedAppointment);
         await this.cartService.addToCart(savedAppointment);
         this.appointmentCreated.emit();
         this.closeForm.emit();
       } catch (error: any) {
-        this.error = error.message || 'Error creating appointment';
+        this.error = error.message || 'Błąd podczas tworzenia wizyty';
         console.error('Error creating appointment:', error);
       } finally {
         this.submitting = false;
