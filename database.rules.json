@@ -1,7 +1,5 @@
 {
   "rules": {
-    ".read": "auth != null",
-    ".write": "auth != null",
     "users": {
       ".read": "query.orderByChild === 'role' && query.equalTo === 'DOCTOR'",
       "$uid": {
