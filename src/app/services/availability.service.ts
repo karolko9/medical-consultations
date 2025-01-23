@@ -74,32 +74,38 @@ export class AvailabilityService {
     return this.getAvailabilitiesByType(AvailabilityType.ABSENCE);
   }
 
-  getDoctorAvailabilityForDay(date: Date): Observable<{ start: string; end: string; }[]> {
-    return this.authService.currentUser$.pipe(
-      switchMap(user => {
-        if (!user || user.role !== UserRole.DOCTOR) {
-          return of([]);
-        }
-        
-        const startOfDay = new Date(date);
-        startOfDay.setHours(0, 0, 0, 0);
-        
-        const endOfDay = new Date(date);
-        endOfDay.setHours(23, 59, 59, 999);
-        
-        return this.getAvailabilities().pipe(
-          map(availabilities => {
-            return availabilities
-              .filter(a => {
-                const availabilityStart = new Date(a.startDate!);
-                const availabilityEnd = new Date(a.endDate!);
-                return availabilityStart <= endOfDay && availabilityEnd >= startOfDay;
-              })
-              .flatMap(a => a.timeSlots || []);
-          })
-        );
-      })
+  getDoctorAvailabilityForDay(date: Date, doctorId?: string): Observable<{ start: string; end: string; }[]> {
+    if (!doctorId) {
+      return this.authService.currentUser$.pipe(
+        switchMap(user => {
+          if (!user || user.role !== UserRole.DOCTOR) {
+            return of([]);
+          }
+          return this.getDoctorAvailabilities(user.uid);
+        }),
+        map(availabilities => this.processAvailabilities(availabilities, date))
+      );
+    }
+
+    return this.getDoctorAvailabilities(doctorId).pipe(
+      map(availabilities => this.processAvailabilities(availabilities, date))
     );
+  }
+
+  private processAvailabilities(availabilities: DoctorAvailability[], date: Date): { start: string; end: string; }[] {
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+    
+    return availabilities
+      .filter(a => {
+        const availabilityStart = new Date(a.startDate!);
+        const availabilityEnd = new Date(a.endDate!);
+        return availabilityStart <= endOfDay && availabilityEnd >= startOfDay;
+      })
+      .flatMap(a => a.timeSlots || []);
   }
 
   getDoctorAvailabilities(doctorId: string): Observable<DoctorAvailability[]> {

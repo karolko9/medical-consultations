@@ -14,6 +14,7 @@ import { firstValueFrom } from 'rxjs';
 })
 export class AppointmentFormComponent implements OnInit {
   @Input() selectedDate: Date = new Date();
+  @Input() doctorId: string | undefined;
   @Output() appointmentCreated = new EventEmitter<void>();
   @Output() closeForm = new EventEmitter<void>();
 
@@ -43,11 +44,15 @@ export class AppointmentFormComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.loadAvailabilities();
+    if (this.doctorId) {
+      this.loadAvailabilities();
+    }
   }
 
   loadAvailabilities() {
-    this.availabilityService.getDoctorAvailabilityForDay(this.selectedDate)
+    if (!this.doctorId) return;
+    
+    this.availabilityService.getDoctorAvailabilityForDay(this.selectedDate, this.doctorId)
       .subscribe(availableSlots => {
         this.availableTimeSlots = availableSlots;
         this.checkAvailableDurations();

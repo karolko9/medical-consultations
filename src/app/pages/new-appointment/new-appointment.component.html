@@ -53,6 +53,7 @@
           <app-appointment-form
             *ngIf="showAppointmentForm"
             [selectedDate]="selectedDate"
+            [doctorId]="doctor.uid"
             (appointmentCreated)="onAppointmentCreated()"
             (closeForm)="onFormClosed()">
           </app-appointment-form>
