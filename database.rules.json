@@ -11,11 +11,11 @@
     "appointments": {
       ".read": "auth != null",
       "$doctorId": {
-        ".read": "auth != null && (auth.uid === $doctorId || root.child('users').child(auth.uid).child('role').val() === 'ADMIN')",
-        ".write": "auth != null && (auth.uid === $doctorId || root.child('users').child(auth.uid).child('role').val() === 'ADMIN')",
+        ".read": "auth != null",
+        ".write": "auth != null && (auth.uid === $doctorId || root.child('users').child(auth.uid).child('role').val() === 'PATIENT' || root.child('users').child(auth.uid).child('role').val() === 'ADMIN')",
         "$appointmentId": {
           ".read": "auth != null && (auth.uid === $doctorId || data.child('patientId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'ADMIN')",
-          ".write": "auth != null && (auth.uid === $doctorId || data.child('patientId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'ADMIN')"
+          ".write": "auth != null && (auth.uid === $doctorId || data.child('patientId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'ADMIN' || !data.exists() && root.child('users').child(auth.uid).child('role').val() === 'PATIENT')"
         }
       }
     },

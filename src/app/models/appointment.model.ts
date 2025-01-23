@@ -9,6 +9,7 @@ export interface Appointment {
   consultationType: ConsultationType;
   additionalInfo?: string;
   status: AppointmentStatus;
+  doctorId?: string;
 }
 
 export enum ConsultationType {
