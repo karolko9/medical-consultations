@@ -39,6 +39,7 @@ import { AppointmentFormComponent } from './components/appointment-form/appointm
 import { UnauthorizedComponent } from './components/unauthorized/unauthorized.component';
 import { NavbarComponent } from './components/navbar/navbar.component';
 import { AuthNavComponent } from './components/auth-nav/auth-nav.component';
+import { NewAppointmentComponent } from './pages/new-appointment/new-appointment.component';
 
 @NgModule({
   declarations: [
@@ -54,7 +55,8 @@ import { AuthNavComponent } from './components/auth-nav/auth-nav.component';
     AppointmentFormComponent,
     UnauthorizedComponent,
     NavbarComponent,
-    AuthNavComponent
+    AuthNavComponent,
+    NewAppointmentComponent
   ],
   imports: [
     BrowserModule,

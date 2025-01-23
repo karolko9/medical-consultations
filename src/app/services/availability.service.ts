@@ -102,6 +102,30 @@ export class AvailabilityService {
     );
   }
 
+  getDoctorAvailabilities(doctorId: string): Observable<DoctorAvailability[]> {
+    const doctorAvailabilitiesRef = ref(this.db, `${this.dbPath}/${doctorId}`);
+    return new Observable<DoctorAvailability[]>(subscriber => {
+      onValue(doctorAvailabilitiesRef, (snapshot) => {
+        const data = snapshot.val();
+        const availabilities: DoctorAvailability[] = [];
+        if (data) {
+          Object.keys(data).forEach(key => {
+            const item = data[key];
+            const availability: DoctorAvailability = {
+              ...item,
+              id: key,
+              doctorId: doctorId,
+              startDate: item.startDate ? new Date(item.startDate) : null,
+              endDate: item.endDate ? new Date(item.endDate) : null
+            };
+            availabilities.push(availability);
+          });
+        }
+        subscriber.next(availabilities);
+      });
+    });
+  }
+
   addAvailability(availability: DoctorAvailability): Observable<string> {
     if (!this.currentDoctorId) {
       return new Observable(subscriber => 

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, Input, Output, EventEmitter } from '@angular/core';
 import { 
   CalendarView, 
   CalendarEvent,
@@ -23,6 +23,9 @@ interface CalendarEventExtended extends CalendarEvent {
   styleUrls: ['./doctor-calendar.component.scss']
 })
 export class DoctorCalendarComponent implements OnInit, OnDestroy {
+  @Input() doctorId: string | undefined;
+  @Output() dateSelected = new EventEmitter<Date>();
+
   view: CalendarView = CalendarView.Week;
   CalendarView = CalendarView;
   viewDate: Date = new Date();
@@ -46,8 +49,10 @@ export class DoctorCalendarComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    this.loadAppointments();
-    this.loadAvailabilities();
+    if (this.doctorId) {
+      this.loadAppointments();
+      this.loadAvailabilities();
+    }
   }
 
   ngOnDestroy() {
@@ -55,35 +60,40 @@ export class DoctorCalendarComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
+  loadAvailabilities() {
+    if (!this.doctorId) return;
+
+    this.availabilityService.getDoctorAvailabilities(this.doctorId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((availabilities: DoctorAvailability[]) => {
+        this.availabilities = availabilities;
+        this.updateCalendarEvents();
+      });
+  }
+
   loadAppointments() {
-    this.appointmentService.getAppointments()
+    if (!this.doctorId) return;
+
+    this.appointmentService.getAppointmentsByDoctor(this.doctorId)
       .pipe(takeUntil(this.destroy$))
       .subscribe(appointments => {
         this.events = appointments.map(appointment => ({
-          title: `${appointment.consultationType}: ${appointment.patientName}${appointment.status === AppointmentStatus.CANCELLED ? ' (Odwołana)' : ''}`,
           start: new Date(appointment.start),
           end: new Date(appointment.end),
-          color: appointment.status === AppointmentStatus.CANCELLED 
-            ? { primary: '#9e9e9e', secondary: '#f5f5f5' } 
-            : this.getEventColor(appointment.consultationType),
-          draggable: false,
+          title: appointment.title,
+          color: {
+            primary: '#ad2121',
+            secondary: '#FAE3E3'
+          },
           resizable: {
             beforeStart: false,
             afterEnd: false
           },
+          draggable: false,
           meta: appointment,
           cssClass: `appointment-event ${appointment.status === AppointmentStatus.CANCELLED ? 'cancelled' : ''}`
         }));
-        this.refresh.next();
-      });
-  }
-
-  loadAvailabilities() {
-    this.availabilityService.getAvailabilities()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(availabilities => {
-        this.availabilities = availabilities;
-        this.refresh.next();
+        this.updateCalendarEvents();
       });
   }
 
@@ -178,8 +188,12 @@ export class DoctorCalendarComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.selectedSlot = clickedDate;
-    this.showAppointmentForm = true;
+    this.onSlotSelected(clickedDate);
+  }
+
+  onSlotSelected(date: Date) {
+    this.selectedSlot = date;
+    this.dateSelected.emit(date);
   }
 
   onAppointmentCreated() {
@@ -276,5 +290,14 @@ export class DoctorCalendarComponent implements OnInit, OnDestroy {
 
       return timeDate >= availabilityStart && timeDate <= availabilityEnd;
     });
+  }
+
+  updateCalendarEvents() {
+    this.events = this.events.filter(event => {
+      if (!event.meta) return true;
+      if (!('doctorId' in event.meta)) return true;
+      return (event.meta as any).doctorId === this.doctorId;
+    });
+    this.refresh.next();
   }
 }

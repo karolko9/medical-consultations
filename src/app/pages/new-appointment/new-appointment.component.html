@@ -1,0 +1,63 @@
+<div class="container py-4">
+  <div *ngIf="error" class="alert alert-danger">
+    {{ error }}
+  </div>
+
+  <div *ngIf="doctor$ | async as doctor" class="row">
+    <!-- Doctor info -->
+    <div class="col-md-4">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-3">
+            <div class="rounded-circle me-3 bg-light d-flex align-items-center justify-content-center" 
+                 style="width: 64px; height: 64px;">
+              <i class="fas fa-user-md fa-2x text-primary" *ngIf="!doctor.photoURL"></i>
+              <img *ngIf="doctor.photoURL" 
+                   [src]="doctor.photoURL" 
+                   class="rounded-circle" 
+                   alt="Doctor photo"
+                   style="width: 100%; height: 100%; object-fit: cover;">
+            </div>
+            <div>
+              <h5 class="card-title mb-1">{{ doctor.displayName || 'Lekarz' }}</h5>
+              <p class="text-primary mb-0" *ngIf="doctor.specialization">{{ doctor.specialization }}</p>
+            </div>
+          </div>
+
+          <div class="mb-3" *ngIf="doctor.consultationPrice">
+            <i class="fas fa-money-bill-wave text-muted me-2"></i>
+            <span>{{ doctor.consultationPrice }} zł / konsultacja</span>
+          </div>
+
+          <div class="mb-3" *ngIf="doctor.about">
+            <h6>O lekarzu</h6>
+            <p class="text-muted">{{ doctor.about }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Calendar and appointment form -->
+    <div class="col-md-8">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h4 class="mb-4">Wybierz termin wizyty</h4>
+          
+          <!-- Calendar -->
+          <app-doctor-calendar
+            [doctorId]="doctor.uid"
+            (dateSelected)="onDateSelected($event)">
+          </app-doctor-calendar>
+
+          <!-- Appointment form -->
+          <app-appointment-form
+            *ngIf="showAppointmentForm"
+            [selectedDate]="selectedDate"
+            (appointmentCreated)="onAppointmentCreated()"
+            (closeForm)="onFormClosed()">
+          </app-appointment-form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

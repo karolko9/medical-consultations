@@ -11,6 +11,7 @@ import { PersistenceSettingsComponent } from './components/persistence-settings/
 import { DoctorListComponent } from './components/doctor-list/doctor-list.component';
 import { UnauthorizedComponent } from './components/unauthorized/unauthorized.component';
 import { UserRole } from './models/user.model';
+import { NewAppointmentComponent } from './pages/new-appointment/new-appointment.component';
 
 const routes: Routes = [
   // Public routes
@@ -50,6 +51,14 @@ const routes: Routes = [
     children: [
       { path: 'persistence', component: PersistenceSettingsComponent }
     ]
+  },
+
+  // Appointment routes
+  { 
+    path: 'appointments/new/:doctorId', 
+    component: NewAppointmentComponent,
+    canActivate: [AuthGuard],
+    data: { role: UserRole.PATIENT }
   },
 
   // Fallback route

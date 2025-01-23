@@ -1,0 +1,13 @@
+// Styles for the new appointment page
+.card {
+  border: none;
+  transition: transform 0.2s;
+
+  &:hover {
+    transform: translateY(-2px);
+  }
+}
+
+.text-primary {
+  color: var(--primary-color);
+}
