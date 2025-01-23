@@ -35,7 +35,26 @@
 </div>
 
 <ng-template #tooltipTemplate let-event="event">
-  <div [innerHTML]="getEventTooltip(event)"></div>
+  <div class="event-tooltip">
+    <div class="tooltip-title">{{ event.title }}</div>
+    <div class="tooltip-time">
+      {{ event.start | date:'HH:mm' }} - {{ event.end | date:'HH:mm' }}
+    </div>
+    <ng-container *ngIf="event.meta?.type !== 'availability' && event.meta?.type !== 'absence'">
+      <div>
+        <strong>Pacjent:</strong> {{ event.meta?.patientName }}
+      </div>
+      <div>
+        <strong>Typ wizyty:</strong> {{ event.meta?.consultationType }}
+      </div>
+      <div>
+        <strong>Status:</strong>
+        <span class="tooltip-status" [ngClass]="event.meta?.status?.toLowerCase()">
+          {{ event.meta?.status }}
+        </span>
+      </div>
+    </ng-container>
+  </div>
 </ng-template>
 
 <ng-template #customHeader let-days="days" let-locale="locale">
@@ -57,10 +76,15 @@
 </ng-template>
 
 <ng-template #customEventTemplate let-weekEvent="weekEvent">
-  <div class="cal-event" [ngStyle]="{ backgroundColor: weekEvent.event.color?.secondary }">
+  <div class="cal-event" 
+       [ngClass]="weekEvent.event.cssClass"
+       [ngStyle]="{ backgroundColor: weekEvent.event.color?.secondary }">
     <div class="event-title">
       {{ weekEvent.event.title }}
-      <button class="btn-cancel" (click)="handleCancelClick($event, weekEvent.event)" title="Anuluj wizytę">
+      <button *ngIf="weekEvent.event.meta?.status !== 'CANCELLED' && weekEvent.event.meta?.status !== 'COMPLETED'"
+              class="btn-cancel" 
+              (click)="handleCancelClick($event, weekEvent.event)" 
+              title="Anuluj wizytę">
         <i class="fas fa-times"></i>
       </button>
     </div>

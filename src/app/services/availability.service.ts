@@ -28,15 +28,18 @@ export class AvailabilityService {
   }
 
   private initializeAvailabilities() {
-    // Subscribe to auth changes to get current doctor ID
+    this.log('Inicjalizacja dostępności');
     this.authService.currentUser$.subscribe(user => {
       if (user && user.role === UserRole.DOCTOR) {
+        this.log('Zalogowany lekarz:', user);
         this.currentDoctorId = user.uid;
-        // Initialize availabilities for this doctor
         const doctorAvailabilitiesRef = ref(this.db, `${this.dbPath}/${user.uid}`);
+        
+        this.log('Nasłuchiwanie zmian dostępności dla:', user.uid);
         onValue(doctorAvailabilitiesRef, (snapshot) => {
           const data = snapshot.val();
           const availabilities: DoctorAvailability[] = [];
+          
           if (data) {
             Object.keys(data).forEach(key => {
               const item = data[key];
@@ -47,13 +50,16 @@ export class AvailabilityService {
                 startDate: item.startDate ? new Date(item.startDate) : null,
                 endDate: item.endDate ? new Date(item.endDate) : null
               };
-              this.log('Processed availability:', availability);
+              this.log('Przetworzona dostępność:', availability);
               availabilities.push(availability);
             });
           }
+          
+          this.log('Zaktualizowano listę dostępności:', availabilities);
           this.availabilitiesSubject.next(availabilities);
         });
       } else {
+        this.log('Brak zalogowanego lekarza lub inny typ użytkownika');
         this.currentDoctorId = null;
         this.availabilitiesSubject.next([]);
       }
@@ -61,6 +67,7 @@ export class AvailabilityService {
   }
 
   getAvailabilities(): Observable<DoctorAvailability[]> {
+    this.log('Pobieranie wszystkich dostępności');
     return this.availabilitiesSubject.asObservable();
   }
 
@@ -109,11 +116,14 @@ export class AvailabilityService {
   }
 
   getDoctorAvailabilities(doctorId: string): Observable<DoctorAvailability[]> {
+    this.log('Pobieranie dostępności dla lekarza:', doctorId);
     const doctorAvailabilitiesRef = ref(this.db, `${this.dbPath}/${doctorId}`);
+    
     return new Observable<DoctorAvailability[]>(subscriber => {
       onValue(doctorAvailabilitiesRef, (snapshot) => {
         const data = snapshot.val();
         const availabilities: DoctorAvailability[] = [];
+        
         if (data) {
           Object.keys(data).forEach(key => {
             const item = data[key];
@@ -124,16 +134,24 @@ export class AvailabilityService {
               startDate: item.startDate ? new Date(item.startDate) : null,
               endDate: item.endDate ? new Date(item.endDate) : null
             };
+            this.log('Przetworzona dostępność lekarza:', availability);
             availabilities.push(availability);
           });
         }
+        
+        this.log('Zwracanie dostępności dla lekarza:', availabilities);
         subscriber.next(availabilities);
+      }, error => {
+        this.log('Błąd podczas pobierania dostępności:', error);
+        subscriber.error(error);
       });
     });
   }
 
   addAvailability(availability: DoctorAvailability): Observable<string> {
+    this.log('Dodawanie nowej dostępności:', availability);
     if (!this.currentDoctorId) {
+      this.log('Błąd: Brak zalogowanego lekarza');
       return new Observable(subscriber => 
         subscriber.error(new Error('No doctor is currently logged in'))
       );
@@ -148,16 +166,22 @@ export class AvailabilityService {
         endDate: availability.endDate instanceof Date ? availability.endDate.toISOString() : availability.endDate
       };
 
+      this.log('Zapisywanie dostępności:', availabilityToSave);
       push(doctorAvailabilitiesRef, availabilityToSave)
         .then((ref) => {
           if (ref.key) {
+            this.log('Pomyślnie dodano dostępność z ID:', ref.key);
             subscriber.next(ref.key);
             subscriber.complete();
           } else {
+            this.log('Błąd: Nie otrzymano klucza referencji');
             subscriber.error(new Error('Failed to get reference key'));
           }
         })
-        .catch(error => subscriber.error(error));
+        .catch(error => {
+          this.log('Błąd podczas dodawania dostępności:', error);
+          subscriber.error(error);
+        });
     });
   }
 

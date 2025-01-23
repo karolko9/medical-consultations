@@ -127,38 +127,14 @@ export class AppointmentFormComponent implements OnInit {
   }
 
   async onSubmit() {
-    console.log('Rozpoczęcie tworzenia wizyty');
-    console.log('doctorId:', this.doctorId);
-    
-    if (!this.doctorId) {
-      console.error('Brak ID lekarza');
-      this.error = 'Nie wybrano lekarza. Proszę wrócić do wyboru lekarza.';
-      return;
-    }
-
-    if (this.appointmentForm.invalid) {
-      console.log('Formularz jest nieprawidłowy:', this.appointmentForm.errors);
-      Object.keys(this.appointmentForm.controls).forEach(key => {
-        const control = this.appointmentForm.get(key);
-        if (control) {
-          control.markAsTouched();
-        }
-      });
-      return;
-    }
-
     if (this.appointmentForm.valid && !this.submitting) {
       this.submitting = true;
       this.error = null;
 
       try {
         const formValue = this.appointmentForm.value;
-        console.log('Wartości formularza:', formValue);
-        
         const startDate = new Date(this.selectedDate);
         const endDate = new Date(startDate.getTime() + formValue.duration * 60000);
-        console.log('Data rozpoczęcia:', startDate);
-        console.log('Data zakończenia:', endDate);
 
         // Sprawdź czy koniec wizyty nie przekracza 14:00
         if (!this.isEndTimeValid(endDate)) {
@@ -170,10 +146,6 @@ export class AppointmentFormComponent implements OnInit {
           throw new Error('Wizyta wykracza poza godziny przyjęć lekarza');
         }
 
-        if (!this.doctorId) {
-          throw new Error('ID lekarza jest wymagane do utworzenia wizyty');
-        }
-
         const appointment: Appointment = {
           start: startDate,
           end: endDate,
@@ -183,21 +155,14 @@ export class AppointmentFormComponent implements OnInit {
           patientAge: formValue.patientAge,
           consultationType: formValue.consultationType,
           additionalInfo: formValue.additionalInfo,
-          status: AppointmentStatus.PENDING,
-          doctorId: this.doctorId
+          status: AppointmentStatus.PENDING
         };
-        console.log('Utworzony obiekt wizyty:', appointment);
 
         const savedAppointment = await this.appointmentService.addAppointment(appointment);
-        console.log('Zapisana wizyta:', savedAppointment);
-        
         await this.cartService.addToCart(savedAppointment);
-        console.log('Wizyta dodana do koszyka');
-        
         this.appointmentCreated.emit();
         this.closeForm.emit();
       } catch (error: any) {
-        console.error('Szczegóły błędu:', error);
         this.error = error.message || 'Error creating appointment';
         console.error('Error creating appointment:', error);
       } finally {

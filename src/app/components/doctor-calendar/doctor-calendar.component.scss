@@ -201,196 +201,135 @@
           }
 
           .cal-hour-segment {
-            &.available {
-              background-color: rgba(76, 175, 80, 0.3) !important;
-              cursor: pointer;
-
-              &:hover {
-                background-color: rgba(76, 175, 80, 0.4) !important;
-              }
-            }
-
             &.past-time {
-              background-color: rgba(189, 189, 189, 0.3) !important;
+              background-color: rgba(158, 158, 158, 0.3) !important;
               cursor: not-allowed;
             }
 
+            &.available {
+              background-color: rgba(76, 175, 80, 0.2) !important;
+              border-left: 3px solid #4caf50 !important;
+              cursor: pointer;
+
+              &:hover {
+                background-color: rgba(76, 175, 80, 0.3) !important;
+              }
+            }
+
             &.absence-time {
-              background-color: rgba(244, 67, 54, 0.1) !important;
+              background-color: rgba(244, 67, 54, 0.2) !important;
+              border-left: 3px solid #f44336 !important;
               cursor: not-allowed;
             }
           }
         }
       }
     }
-  }
 
-  // Style dla segmentów w pozostałych kolumnach
-  .cal-hour-segment {
-    position: relative;
+    .cal-event {
+      border-radius: 4px;
+      padding: 2px 5px;
+      margin: 1px;
+      transition: all 0.2s;
 
-    &.available {
-      background-color: rgba(40, 167, 69, 0.1) !important;
-      border-left: 3px solid #28a745 !important;
+      &.appointment-event {
+        &.pending {
+          background-color: #ffa726 !important;
+          border-color: #fb8c00 !important;
+        }
 
-      &:hover {
+        &.confirmed {
+          background-color: #66bb6a !important;
+          border-color: #43a047 !important;
+        }
+
+        &.cancelled {
+          background-color: #ef5350 !important;
+          border-color: #e53935 !important;
+          text-decoration: line-through;
+        }
+
+        &.completed {
+          background-color: #8e24aa !important;
+          border-color: #6a1b9a !important;
+        }
+
+        .event-title {
+          color: white;
+          font-weight: 500;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+      }
+
+      &.availability-event {
         background-color: rgba(40, 167, 69, 0.2) !important;
+        border: 2px dashed #28a745 !important;
+        color: #28a745 !important;
       }
-    }
 
-    &.unavailable {
-      background-color: rgba(220, 53, 69, 0.1) !important;
-      border-left: 3px solid #dc3545 !important;
-
-      &:hover {
+      &.absence-event {
         background-color: rgba(220, 53, 69, 0.2) !important;
+        border: 2px solid #dc3545 !important;
+        color: #dc3545 !important;
       }
     }
 
-    &:hover {
-      background-color: rgba(0, 0, 0, 0.05);
-    }
-  }
+    .cal-hour-segment {
+      &.available {
+        background-color: rgba(40, 167, 69, 0.1) !important;
+        border-left: 3px solid #28a745 !important;
+        cursor: pointer;
 
-  // Style dla wydarzeń
-  .cal-event {
-    border-radius: 4px;
-    padding: 2px 5px;
-    margin: 1px;
-    transition: all 0.2s;
+        &:hover {
+          background-color: rgba(40, 167, 69, 0.2) !important;
+        }
+      }
 
-    &.appointment-event {
-      background-color: #1e88e5 !important;
-      border: none !important;
-      color: white !important;
-      font-weight: 500;
-      font-size: 0.9em;
+      &.unavailable {
+        background-color: rgba(220, 53, 69, 0.1) !important;
+        border-left: 3px solid #dc3545 !important;
+        cursor: not-allowed;
+      }
 
-      &:hover {
-        transform: scale(1.02);
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      &.past-time {
+        background-color: rgba(158, 158, 158, 0.2) !important;
+        cursor: not-allowed;
       }
     }
   }
 
-  // Style dla tooltipów
+  // Tooltip styles
   .event-tooltip {
-    min-width: 200px;
+    min-width: 250px;
+    padding: 10px;
+    background: white;
     border-radius: 4px;
-    overflow: hidden;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 
-    .tooltip-header {
-      padding: 8px;
-      color: white;
+    .tooltip-title {
       font-weight: bold;
+      margin-bottom: 5px;
     }
 
-    .tooltip-content {
-      padding: 8px;
-      background: white;
-      color: #2c3e50;
-
-      p {
-        margin: 5px 0;
-        font-size: 14px;
-      }
-    }
-  }
-
-  // Style dla nagłówków kalendarza
-  .cal-header {
-    padding: 5px;
-    font-weight: 500;
-    text-align: center;
-    background-color: #f8f9fa;
-    border-bottom: 1px solid #e9ecef;
-  }
-
-  // Style dla godzin
-  .cal-hour {
-    font-weight: 500;
-    color: #2c3e50;
-  }
-
-  // Style dla dostępności (zielone tło)
-  .cal-event.availability-event {
-    background-color: transparent !important;
-    border: none !important;
-
-    .cal-event-title {
-      display: none;
-    }
-  }
-
-  // Style dla nieobecności (czerwone tło)
-  .cal-event.absence-event {
-    background-color: transparent !important;
-    border: none !important;
-
-    .cal-event-title {
-      display: none;
-    }
-  }
-
-  // Tło dla dostępności
-  .cal-hour-segment.available {
-    background-color: rgba(40, 167, 69, 0.1) !important;
-  }
-
-  // Tło dla nieobecności
-  .cal-hour-segment.unavailable {
-    background-color: rgba(220, 53, 69, 0.1) !important;
-  }
-
-  // Style dla wizyt
-  .cal-event.appointment-event {
-    background-color: #1e88e5 !important;
-    border: none !important;
-    color: white !important;
-    font-weight: bold;
-    border-radius: 4px;
-    padding: 2px 5px;
-  }
-
-  // Hover na segmentach godzin
-  .cal-hour-segment:hover {
-    background-color: rgba(0, 0, 0, 0.05);
-  }
-
-  // Style dla przycisku anulowania wizyty
-  .cal-event {
-    position: relative !important;
-    padding-right: 25px !important;
-    min-height: 25px !important;
-    
-    .event-title {
-      white-space: nowrap !important;
-      overflow: hidden !important;
-      text-overflow: ellipsis !important;
-      padding: 2px 5px !important;
+    .tooltip-time {
+      color: #666;
+      font-size: 0.9em;
+      margin-bottom: 5px;
     }
 
-    .btn-cancel {
-      position: absolute !important;
-      top: 50% !important;
-      right: 5px !important;
-      transform: translateY(-50%) !important;
-      background: none !important;
-      border: none !important;
-      color: white !important;
-      padding: 2px 5px !important;
-      cursor: pointer !important;
-      opacity: 0.8 !important;
-      z-index: 100 !important;
+    .tooltip-status {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 0.8em;
+      font-weight: 500;
 
-      &:hover {
-        opacity: 1 !important;
-      }
-
-      i {
-        font-size: 12px !important;
-      }
+      &.pending { background-color: #fff3e0; color: #f57c00; }
+      &.confirmed { background-color: #e8f5e9; color: #2e7d32; }
+      &.cancelled { background-color: #ffebee; color: #c62828; }
+      &.completed { background-color: #f3e5f5; color: #6a1b9a; }
     }
   }
 }

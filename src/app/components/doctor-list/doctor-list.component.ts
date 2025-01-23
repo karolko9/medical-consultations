@@ -15,9 +15,11 @@ import { AuthService } from '../../services/auth.service';
 export class DoctorListComponent implements OnInit {
   doctors$: Observable<DoctorProfile[]>;
   searchControl = new FormControl('');
+  specializationControl = new FormControl('');
   loading = new BehaviorSubject<boolean>(true);
   error = new BehaviorSubject<string | null>(null);
   isAdmin$: Observable<boolean>;
+  specializations: string[] = [];
 
   constructor(
     private doctorService: DoctorService,
@@ -34,13 +36,41 @@ export class DoctorListComponent implements OnInit {
       distinctUntilChanged()
     );
 
-    this.doctors$ = combineLatest([search$]).pipe(
-      switchMap(([searchTerm]) => {
+    const specialization$ = this.specializationControl.valueChanges.pipe(
+      startWith(''),
+      distinctUntilChanged()
+    );
+
+    this.doctors$ = combineLatest([search$, specialization$]).pipe(
+      switchMap(([searchTerm, specialization]) => {
         this.loading.next(true);
         this.error.next(null);
-        return searchTerm 
-          ? this.doctorService.searchDoctors(searchTerm)
-          : this.doctorService.getDoctors();
+        return this.doctorService.getDoctors().pipe(
+          map(doctors => {
+            // Filtruj lekarzy
+            let filteredDoctors = doctors;
+
+            // Filtruj po wyszukiwaniu
+            if (searchTerm) {
+              const searchLower = searchTerm.toLowerCase();
+              filteredDoctors = filteredDoctors.filter(doctor => 
+                doctor.displayName?.toLowerCase().includes(searchLower) ||
+                doctor.specialization?.toLowerCase().includes(searchLower) ||
+                doctor.languages?.some(lang => lang.toLowerCase().includes(searchLower)) ||
+                doctor.about?.toLowerCase().includes(searchLower)
+              );
+            }
+
+            // Filtruj po specjalizacji
+            if (specialization) {
+              filteredDoctors = filteredDoctors.filter(doctor => 
+                doctor.specialization === specialization
+              );
+            }
+
+            return filteredDoctors;
+          })
+        );
       }),
       map(doctors => {
         this.loading.next(false);
@@ -50,6 +80,21 @@ export class DoctorListComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // Załaduj specjalizacje
+    this.doctorService.getDoctors().pipe(
+      map(doctors => {
+        const specializations = new Set<string>();
+        doctors.forEach(doctor => {
+          if (doctor.specialization) {
+            specializations.add(doctor.specialization);
+          }
+        });
+        return Array.from(specializations).sort();
+      })
+    ).subscribe(specializations => {
+      this.specializations = specializations;
+    });
+
     // Obserwuj błędy
     this.doctors$.subscribe({
       error: (err) => {
@@ -60,9 +105,9 @@ export class DoctorListComponent implements OnInit {
     });
   }
 
-  onMakeAppointment(doctor: DoctorProfile): void {
-    // TODO: Implement appointment creation
-    console.log('Make appointment with doctor:', doctor);
+  clearFilters(): void {
+    this.searchControl.setValue('');
+    this.specializationControl.setValue('');
   }
 
   async seedDoctors() {
@@ -71,7 +116,7 @@ export class DoctorListComponent implements OnInit {
       this.error.next(null);
       await this.seedService.seedDoctors();
       // Odśwież listę lekarzy
-      this.searchControl.setValue('');
+      this.clearFilters();
     } catch (error) {
       console.error('Error seeding doctors:', error);
       this.error.next('Wystąpił błąd podczas dodawania przykładowych lekarzy.');

@@ -40,9 +40,7 @@ export class AppointmentService {
       if (user && user.role === UserRole.DOCTOR) {
         this.currentDoctorId = user.uid;
         const doctorAppointmentsRef = ref(this.db, `${this.dbPath}/${user.uid}`);
-        
-        // Jednorazowe pobranie danych zamiast ciągłego nasłuchiwania
-        get(doctorAppointmentsRef).then((snapshot) => {
+        onValue(doctorAppointmentsRef, (snapshot) => {
           const data = snapshot.val();
           const appointments: ExtendedAppointment[] = [];
           if (data) {
@@ -60,10 +58,9 @@ export class AppointmentService {
           this.appointmentsSubject.next(appointments);
         });
       } else if (user && user.role === UserRole.PATIENT) {
+        // Dla pacjenta pobieramy jego wizyty ze wszystkich gabinetów
         const appointmentsRef = ref(this.db, this.dbPath);
-        
-        // Jednorazowe pobranie danych zamiast ciągłego nasłuchiwania
-        get(appointmentsRef).then((snapshot) => {
+        onValue(appointmentsRef, (snapshot) => {
           const data = snapshot.val();
           const appointments: ExtendedAppointment[] = [];
           if (data) {
@@ -135,22 +132,6 @@ export class AppointmentService {
     );
   }
 
-  private async checkUserPermissions(user: any, doctorId: string): Promise<boolean> {
-    if (!user) return false;
-
-    // Lekarz może dodawać wizyty tylko do swojego kalendarza
-    if (user.role === UserRole.DOCTOR) {
-      return user.uid === doctorId;
-    }
-
-    // Pacjent może dodawać wizyty do kalendarza dowolnego lekarza
-    if (user.role === UserRole.PATIENT) {
-      return true;
-    }
-
-    return false;
-  }
-
   addAppointment(appointment: Appointment): Promise<Appointment> {
     return firstValueFrom(
       this.authService.currentUser$.pipe(
@@ -159,22 +140,7 @@ export class AppointmentService {
             return throwError(() => new Error('User not authenticated'));
           }
 
-          console.log('Próba dodania wizyty:', {
-            userRole: user.role,
-            userId: user.uid,
-            isAuthenticated: !!user,
-            appointmentData: appointment
-          });
-
-          // Sprawdź uprawnienia przed próbą zapisu
-          return from(this.checkUserPermissions(user, appointment.doctorId!)).pipe(
-            switchMap(hasPermission => {
-              if (!hasPermission) {
-                return throwError(() => new Error('Brak uprawnień do dodania wizyty'));
-              }
-
-              return this.hasTimeSlotConflict(new Date(appointment.start), new Date(appointment.end));
-            }),
+          return from(this.hasTimeSlotConflict(new Date(appointment.start), new Date(appointment.end))).pipe(
             map(hasConflict => {
               if (hasConflict) {
                 throw new Error('Wybrany termin koliduje z inną wizytą');
@@ -185,33 +151,18 @@ export class AppointmentService {
               const extendedAppointment: ExtendedAppointment = {
                 ...appointmentToSave,
                 patientId: user.role === UserRole.PATIENT ? user.uid : undefined,
-                doctorId: appointmentToSave.doctorId || (user.role === UserRole.DOCTOR ? user.uid : this.currentDoctorId),
+                doctorId: user.role === UserRole.DOCTOR ? user.uid : this.currentDoctorId,
                 status: AppointmentStatus.PENDING
               };
-
-              console.log('Przygotowana wizyta do zapisu:', {
-                extendedAppointment,
-                path: `${this.dbPath}/${extendedAppointment.doctorId}`
-              });
-
-              // Sprawdź czy doctorId jest ustawione
-              if (!extendedAppointment.doctorId) {
-                throw new Error('Doctor ID is required');
-              }
-
               return extendedAppointment;
             }),
             switchMap(extendedAppointment => {
-              const appointmentsRef = ref(this.db, `${this.dbPath}/${extendedAppointment.doctorId}`);
-              
-              // Konwertuj daty na stringi przed zapisem
-              const appointmentToSave = {
-                ...extendedAppointment,
-                start: new Date(extendedAppointment.start).toISOString(),
-                end: new Date(extendedAppointment.end).toISOString()
-              };
-
-              return from(push(appointmentsRef, appointmentToSave));
+              const doctorId = extendedAppointment.doctorId;
+              if (!doctorId) {
+                return throwError(() => new Error('Doctor ID is required'));
+              }
+              const appointmentsRef = ref(this.db, `${this.dbPath}/${doctorId}`);
+              return from(push(appointmentsRef, extendedAppointment));
             }),
             map(ref => ({
               ...appointment,

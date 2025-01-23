@@ -13,16 +13,48 @@
 
     <!-- Search and filters -->
     <div class="search-filters mb-4">
-      <div class="input-group">
-        <input 
-          type="text" 
-          class="form-control" 
-          placeholder="Szukaj lekarza, specjalizacji lub języka..."
-          [formControl]="searchControl"
-        >
-        <span class="input-group-text">
-          <i class="fas fa-search"></i>
-        </span>
+      <div class="row g-3">
+        <div class="col-md-8">
+          <div class="input-group">
+            <input 
+              type="text" 
+              class="form-control" 
+              placeholder="Szukaj lekarza, specjalizacji lub języka..."
+              [formControl]="searchControl"
+            >
+            <span class="input-group-text">
+              <i class="fas fa-search"></i>
+            </span>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <select class="form-select" [formControl]="specializationControl">
+            <option value="">Wszystkie specjalizacje</option>
+            <option *ngFor="let spec of specializations" [value]="spec">
+              {{ spec }}
+            </option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active filters -->
+    <div class="active-filters mb-3" *ngIf="searchControl.value || specializationControl.value">
+      <div class="d-flex align-items-center">
+        <span class="me-2">Aktywne filtry:</span>
+        <div class="filter-tags">
+          <span class="badge bg-primary me-2" *ngIf="searchControl.value">
+            Wyszukiwanie: {{ searchControl.value }}
+            <button class="btn-close btn-close-white ms-2" (click)="searchControl.setValue('')"></button>
+          </span>
+          <span class="badge bg-primary me-2" *ngIf="specializationControl.value">
+            Specjalizacja: {{ specializationControl.value }}
+            <button class="btn-close btn-close-white ms-2" (click)="specializationControl.setValue('')"></button>
+          </span>
+        </div>
+        <button class="btn btn-link btn-sm text-decoration-none" (click)="clearFilters()">
+          Wyczyść wszystkie
+        </button>
       </div>
     </div>
 

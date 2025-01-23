@@ -11,9 +11,14 @@ import { AppointmentService } from '../../services/appointment.service';
 import { AvailabilityService } from '../../services/availability.service';
 import { Appointment, AppointmentStatus, ConsultationType } from '../../models/appointment.model';
 import { DoctorAvailability, AvailabilityType } from '../../models/availability.model';
+import { AuthService } from '../../services/auth.service';
 
 interface CalendarEventExtended extends CalendarEvent {
-  meta?: Appointment | DoctorAvailability;
+  meta?: {
+    type?: string;
+    availability?: DoctorAvailability;
+    doctorId?: string;
+  } & Partial<Appointment>;
   cssClass?: string;
 }
 
@@ -36,6 +41,7 @@ export class DoctorCalendarComponent implements OnInit, OnDestroy {
   selectedSlot: Date | null = null;
   showAppointmentForm = false;
   refresh = new Subject<void>();
+  private DEBUG = true;
 
   // Calendar display settings
   dayStartHour = 8;
@@ -45,14 +51,29 @@ export class DoctorCalendarComponent implements OnInit, OnDestroy {
 
   constructor(
     private appointmentService: AppointmentService,
-    private availabilityService: AvailabilityService
+    private availabilityService: AvailabilityService,
+    private authService: AuthService
   ) {}
 
-  ngOnInit() {
-    if (this.doctorId) {
-      this.loadAppointments();
-      this.loadAvailabilities();
+  private log(...args: any[]) {
+    if (this.DEBUG) {
+      console.log('[DoctorCalendarComponent]', ...args);
     }
+  }
+
+  ngOnInit() {
+    this.log('Inicjalizacja komponentu kalendarza');
+    this.authService.currentUser$.pipe(takeUntil(this.destroy$)).subscribe(user => {
+      if (user) {
+        this.log('Zalogowany użytkownik:', user);
+        if (!this.doctorId) {
+          this.doctorId = user.uid;
+          this.log('Ustawiono doctorId z zalogowanego użytkownika:', this.doctorId);
+        }
+        this.loadAppointments();
+        this.loadAvailabilities();
+      }
+    });
   }
 
   ngOnDestroy() {
@@ -61,64 +82,86 @@ export class DoctorCalendarComponent implements OnInit, OnDestroy {
   }
 
   loadAvailabilities() {
-    if (!this.doctorId) return;
+    if (!this.doctorId) {
+      this.log('Brak doctorId - nie można załadować dostępności');
+      return;
+    }
 
+    this.log('Ładowanie dostępności dla doctorId:', this.doctorId);
     this.availabilityService.getDoctorAvailabilities(this.doctorId)
       .pipe(takeUntil(this.destroy$))
-      .subscribe((availabilities: DoctorAvailability[]) => {
-        this.availabilities = availabilities;
-        this.updateCalendarEvents();
+      .subscribe({
+        next: (availabilities: DoctorAvailability[]) => {
+          this.log('Załadowano dostępności:', availabilities);
+          this.availabilities = availabilities;
+          this.updateCalendarEvents();
+        },
+        error: (error) => {
+          this.log('Błąd podczas ładowania dostępności:', error);
+        }
       });
   }
 
   loadAppointments() {
-    if (!this.doctorId) return;
+    if (!this.doctorId) {
+      this.log('Brak doctorId - nie można załadować wizyt');
+      return;
+    }
 
+    this.log('Ładowanie wizyt dla doctorId:', this.doctorId);
     this.appointmentService.getAppointmentsByDoctor(this.doctorId)
       .pipe(takeUntil(this.destroy$))
-      .subscribe(appointments => {
-        this.events = appointments.map(appointment => ({
-          start: new Date(appointment.start),
-          end: new Date(appointment.end),
-          title: appointment.title,
-          color: {
-            primary: '#ad2121',
-            secondary: '#FAE3E3'
-          },
-          resizable: {
-            beforeStart: false,
-            afterEnd: false
-          },
-          draggable: false,
-          meta: appointment,
-          cssClass: `appointment-event ${appointment.status === AppointmentStatus.CANCELLED ? 'cancelled' : ''}`
-        }));
-        this.updateCalendarEvents();
+      .subscribe({
+        next: (appointments) => {
+          this.log('Załadowano wizyty:', appointments);
+          this.events = appointments.map(appointment => ({
+            start: new Date(appointment.start),
+            end: new Date(appointment.end),
+            title: appointment.title,
+            color: this.getEventStatusColor(appointment.status),
+            resizable: {
+              beforeStart: false,
+              afterEnd: false
+            },
+            draggable: false,
+            meta: appointment,
+            cssClass: `appointment-event ${appointment.status.toLowerCase()}`
+          }));
+          this.updateCalendarEvents();
+        },
+        error: (error) => {
+          this.log('Błąd podczas ładowania wizyt:', error);
+        }
       });
   }
 
   beforeWeekViewRender(event: CalendarWeekViewBeforeRenderEvent): void {
+    this.log('Renderowanie widoku tygodnia');
     event.hourColumns.forEach(hourColumn => {
       const date = hourColumn.date;
-      const isDuringAbsence = this.isTimeSlotDuringAbsence(date);
       
       hourColumn.hours.forEach(hour => {
         hour.segments.forEach(segment => {
+          const segmentDate = segment.date;
           let classes = [];
           
           // Sprawdź czy segment jest w przeszłości
-          if (segment.date < new Date()) {
+          if (segmentDate < new Date()) {
+            this.log('Segment w przeszłości:', segmentDate);
             classes.push('past-time');
-          }
-          // Sprawdź czy segment jest w czasie nieobecności
-          else if (isDuringAbsence) {
-            classes.push('absence-time');
-          }
-          // Sprawdź dostępność
-          else {
-            const isAvailable = this.isTimeSlotWithinAvailability(segment.date);
-            if (isAvailable) {
-              classes.push('available');
+          } else {
+            // Sprawdź czy jest to czas nieobecności
+            const isAbsence = this.isTimeSlotDuringAbsence(segmentDate);
+            if (isAbsence) {
+              this.log('Segment w czasie nieobecności:', segmentDate);
+              classes.push('absence-time');
+            } else {
+              // Sprawdź czy jest to czas dostępności
+              const isAvailable = this.isTimeSlotWithinAvailability(segmentDate);
+              if (isAvailable) {
+                this.log('Segment w czasie dostępności:', segmentDate);
+                classes.push('available');
+              }
             }
           }
 
@@ -236,11 +279,6 @@ export class DoctorCalendarComponent implements OnInit, OnDestroy {
   }
 
   isTimeSlotWithinAvailability(time: Date): boolean {
-    // Najpierw sprawdź czy nie ma nieobecności w tym czasie
-    if (this.isTimeSlotDuringAbsence(time)) {
-      return false;
-    }
-
     return this.availabilities.some(availability => {
       if (availability.type === AvailabilityType.ABSENCE) {
         return false;
@@ -293,11 +331,44 @@ export class DoctorCalendarComponent implements OnInit, OnDestroy {
   }
 
   updateCalendarEvents() {
-    this.events = this.events.filter(event => {
-      if (!event.meta) return true;
-      if (!('doctorId' in event.meta)) return true;
-      return (event.meta as any).doctorId === this.doctorId;
+    this.log('Aktualizacja wydarzeń w kalendarzu');
+    // Teraz obsługujemy tylko wizyty, dostępności są wyświetlane jako tło
+    const allEvents: CalendarEventExtended[] = [];
+
+    // Dodaj wizyty do kalendarza
+    this.log('Przetwarzanie wizyt:', this.events);
+    this.events.forEach(event => {
+      const appointmentMeta = event.meta as { doctorId?: string } & Partial<Appointment>;
+      if (appointmentMeta?.doctorId === this.doctorId) {
+        this.log('Dodawanie wizyty:', event);
+        const appointment = event.meta as Appointment;
+        const eventColor = this.getEventStatusColor(appointment.status);
+        
+        allEvents.push({
+          ...event,
+          color: eventColor,
+          cssClass: `appointment-event ${appointment.status.toLowerCase()}`
+        });
+      }
     });
+
+    this.log('Wszystkie wydarzenia po aktualizacji:', allEvents);
+    this.events = allEvents;
     this.refresh.next();
+  }
+
+  private getEventStatusColor(status: AppointmentStatus): { primary: string; secondary: string } {
+    switch (status) {
+      case AppointmentStatus.PENDING:
+        return { primary: '#ffa726', secondary: '#ffe0b2' }; // Pomarańczowy
+      case AppointmentStatus.CONFIRMED:
+        return { primary: '#66bb6a', secondary: '#c8e6c9' }; // Zielony
+      case AppointmentStatus.CANCELLED:
+        return { primary: '#ef5350', secondary: '#ffcdd2' }; // Czerwony
+      case AppointmentStatus.COMPLETED:
+        return { primary: '#8e24aa', secondary: '#e1bee7' }; // Fioletowy
+      default:
+        return { primary: '#90a4ae', secondary: '#cfd8dc' }; // Szary
+    }
   }
 }
