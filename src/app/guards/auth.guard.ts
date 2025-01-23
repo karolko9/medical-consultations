@@ -1,6 +1,12 @@
 import { Injectable } from '@angular/core';
-import { CanActivate, ActivatedRouteSnapshot, RouterStateSnapshot, Router } from '@angular/router';
-import { Observable, map, take } from 'rxjs';
+import { 
+  CanActivate, 
+  ActivatedRouteSnapshot, 
+  RouterStateSnapshot, 
+  Router 
+} from '@angular/router';
+import { Observable, map, take, of } from 'rxjs';
+import { Auth } from '@angular/fire/auth';
 import { AuthService } from '../services/auth.service';
 import { UserRole } from '../models/user.model';
 
@@ -9,54 +15,62 @@ import { UserRole } from '../models/user.model';
 })
 export class AuthGuard implements CanActivate {
   constructor(
+    private auth: Auth,
     private authService: AuthService,
     private router: Router
   ) {}
 
   canActivate(
-    next: ActivatedRouteSnapshot,
+    route: ActivatedRouteSnapshot,
     state: RouterStateSnapshot
   ): Observable<boolean> {
-    return this.authService.currentUser$.pipe(
+    return this.authService.isAuthReady$.pipe(
       take(1),
-      map(user => {
-        const requiredRole = next.data['role'] as UserRole;
-        
-        // If no user is logged in
+      map(ready => {
+        if (!ready) {
+          // Poczekaj na inicjalizację auth
+          return true;
+        }
+
+        const user = this.authService.getCurrentUser();
+        const requiredRole = route.data['role'] as UserRole;
+
+        // Jeśli użytkownik nie jest zalogowany
         if (!user) {
-          // Store the attempted URL for redirecting after login
-          this.router.navigate(['/login'], { 
-            queryParams: { 
+          console.log('User not logged in, redirecting to login');
+          this.router.navigate(['/login'], {
+            queryParams: {
               returnUrl: state.url,
-              requiredRole: requiredRole // Pass required role to show appropriate message
+              requiredRole: requiredRole
             }
           });
           return false;
         }
 
-        // If user is banned
+        // Jeśli użytkownik jest zbanowany
         if (user.banned) {
+          console.log('User is banned, redirecting to banned page');
           this.router.navigate(['/banned']);
           return false;
         }
 
-        // If route requires specific role
+        // Jeśli ścieżka wymaga konkretnej roli
         if (requiredRole) {
-          // Check if user has required role or is an ADMIN (who has access to everything)
           const hasRequiredRole = user.role === requiredRole || user.role === UserRole.ADMIN;
           
           if (!hasRequiredRole) {
-            this.router.navigate(['/unauthorized'], { 
-              queryParams: { 
+            console.log(`User does not have required role: ${requiredRole}`);
+            this.router.navigate(['/unauthorized'], {
+              queryParams: {
                 requiredRole: requiredRole,
-                currentRole: user.role 
+                currentRole: user.role
               }
             });
             return false;
           }
         }
 
-        // User is authenticated and authorized
+        // Użytkownik jest zalogowany i ma odpowiednie uprawnienia
         return true;
       })
     );

@@ -19,9 +19,14 @@ export interface User {
 
 export interface DoctorProfile extends User {
   specialization: string;
-  description?: string;
+  education?: string;
+  experience?: string;
+  about?: string;
+  languages?: string[];
   rating?: number;
-  reviewCount?: number;
+  reviewsCount?: number;
+  consultationPrice?: number;
+  availableTimeSlots?: { [key: string]: boolean };
 }
 
 export interface PatientProfile extends User {

@@ -1,6 +1,7 @@
 {
   "rules": {
     "users": {
+      ".indexOn": ["role"],
       ".read": "query.orderByChild === 'role' && query.equalTo === 'DOCTOR'",
       "$uid": {
         ".read": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'ADMIN')",

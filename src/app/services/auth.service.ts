@@ -20,6 +20,9 @@ export class AuthService {
     [PersistenceMode.NONE]: inMemoryPersistence
   };
 
+  private isAuthReadySubject = new BehaviorSubject<boolean>(false);
+  isAuthReady$ = this.isAuthReadySubject.asObservable();
+
   constructor(
     private auth: Auth,
     private db: Database
@@ -27,34 +30,45 @@ export class AuthService {
     // Subscribe to Firebase auth state changes
     user(this.auth).subscribe(async (firebaseUser) => {
       if (firebaseUser) {
-        // Get additional user data from the database
-        const userRef = ref(this.db, `users/${firebaseUser.uid}`);
-        const snapshot = await get(userRef);
-        const userData = snapshot.val();
-        
-        const currentUser: User = {
-          uid: firebaseUser.uid,
-          email: firebaseUser.email!,
-          displayName: firebaseUser.displayName || userData?.displayName || '',
-          role: userData?.role || UserRole.PATIENT,
-          emailVerified: firebaseUser.emailVerified,
-          createdAt: userData?.createdAt || Date.now(),
-          lastLoginAt: Date.now()
-        };
+        try {
+          // Get additional user data from the database
+          const userRef = ref(this.db, `users/${firebaseUser.uid}`);
+          const snapshot = await get(userRef);
+          const userData = snapshot.val();
+          
+          const currentUser: User = {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email!,
+            displayName: firebaseUser.displayName || userData?.displayName || '',
+            role: userData?.role || UserRole.PATIENT,
+            emailVerified: firebaseUser.emailVerified,
+            createdAt: userData?.createdAt || Date.now(),
+            lastLoginAt: Date.now()
+          };
 
-        this.currentUserSubject.next(currentUser);
-        
-        // Update last login time
-        await update(userRef, {
-          lastLoginAt: currentUser.lastLoginAt
-        });
+          this.currentUserSubject.next(currentUser);
+          
+          // Update last login time
+          await update(userRef, {
+            lastLoginAt: currentUser.lastLoginAt
+          });
+        } catch (error) {
+          console.error('Error loading user data:', error);
+        }
       } else {
         this.currentUserSubject.next(null);
       }
+      
+      // Oznacz, że auth jest gotowy
+      this.isAuthReadySubject.next(true);
     });
 
     // Load initial persistence mode
     this.loadPersistenceMode();
+  }
+
+  getCurrentUser(): User | null {
+    return this.currentUserSubject.value;
   }
 
   private async loadPersistenceMode() {

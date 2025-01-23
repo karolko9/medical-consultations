@@ -1,6 +1,15 @@
 <div class="doctor-list">
   <div class="container py-4">
-    <h1 class="mb-4">Lista lekarzy</h1>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h1>Lista lekarzy</h1>
+      <!-- Admin only: Seed button -->
+      <button *ngIf="isAdmin$ | async" 
+              class="btn btn-outline-primary"
+              (click)="seedDoctors()">
+        <i class="fas fa-database me-2"></i>
+        Dodaj przykładowych lekarzy
+      </button>
+    </div>
 
     <!-- Search and filters -->
     <div class="search-filters mb-4">
@@ -8,7 +17,7 @@
         <input 
           type="text" 
           class="form-control" 
-          placeholder="Szukaj lekarza..."
+          placeholder="Szukaj lekarza, specjalizacji lub języka..."
           [formControl]="searchControl"
         >
         <span class="input-group-text">
@@ -48,28 +57,70 @@
 
       <!-- Doctor cards -->
       <div class="col-md-6 col-lg-4" *ngFor="let doctor of doctors$ | async">
-        <div class="card h-100">
+        <div class="card h-100 shadow-sm">
           <div class="card-body">
+            <!-- Doctor photo and basic info -->
             <div class="d-flex align-items-center mb-3">
-              <div class="doctor-avatar me-3">
-                <i class="fas fa-user-md fa-2x"></i>
+              <div class="rounded-circle me-3 bg-light d-flex align-items-center justify-content-center" 
+                   style="width: 64px; height: 64px;">
+                <i class="fas fa-user-md fa-2x text-primary" *ngIf="!doctor.photoURL"></i>
+                <img *ngIf="doctor.photoURL" 
+                     [src]="doctor.photoURL" 
+                     class="rounded-circle" 
+                     alt="Doctor photo"
+                     style="width: 100%; height: 100%; object-fit: cover;">
               </div>
               <div>
-                <h5 class="card-title mb-1">{{ doctor.displayName || 'Brak nazwy' }}</h5>
-                <p class="text-muted mb-0">{{ doctor.email }}</p>
+                <h5 class="card-title mb-1">{{ doctor.displayName || 'Lekarz' }}</h5>
+                <p class="text-primary mb-0" *ngIf="doctor.specialization">{{ doctor.specialization }}</p>
               </div>
             </div>
-            <p class="card-text">
-              <small class="text-muted">
-                <i class="fas fa-calendar-check me-1"></i>
-                Dołączył(a): {{ doctor.createdAt ? (doctor.createdAt | date:'mediumDate') : 'Data nieznana' }}
-              </small>
+
+            <!-- Rating and reviews -->
+            <div class="mb-3" *ngIf="doctor.rating || doctor.reviewsCount">
+              <div class="d-flex align-items-center">
+                <div class="me-2" *ngIf="doctor.rating">
+                  <i class="fas fa-star text-warning"></i>
+                  <span class="ms-1">{{ doctor.rating }}</span>
+                </div>
+                <span class="text-muted" *ngIf="doctor.reviewsCount">({{ doctor.reviewsCount }} opinii)</span>
+              </div>
+            </div>
+
+            <!-- About -->
+            <p class="card-text text-muted mb-3" *ngIf="doctor.about">
+              {{ doctor.about | slice:0:150 }}{{ doctor.about.length > 150 ? '...' : '' }}
             </p>
-          </div>
-          <div class="card-footer bg-transparent">
-            <button class="btn btn-primary w-100" (click)="onMakeAppointment(doctor)">
-              <i class="fas fa-calendar-plus me-2"></i>Umów wizytę
-            </button>
+
+            <!-- Additional info -->
+            <div class="mb-3">
+              <div class="mb-2" *ngIf="doctor.education">
+                <i class="fas fa-graduation-cap text-muted me-2"></i>
+                <small>{{ doctor.education }}</small>
+              </div>
+              <div class="mb-2" *ngIf="doctor.experience">
+                <i class="fas fa-briefcase text-muted me-2"></i>
+                <small>{{ doctor.experience }}</small>
+              </div>
+              <div class="mb-2" *ngIf="doctor.languages?.length">
+                <i class="fas fa-language text-muted me-2"></i>
+                <small>{{ doctor.languages?.join(', ') || '' }}</small>
+              </div>
+              <div *ngIf="doctor.consultationPrice">
+                <i class="fas fa-money-bill-wave text-muted me-2"></i>
+                <small>{{ doctor.consultationPrice }} zł / konsultacja</small>
+              </div>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="d-grid gap-2">
+              <a [routerLink]="['/doctors', doctor.uid]" class="btn btn-outline-primary">
+                Zobacz profil
+              </a>
+              <a [routerLink]="['/appointments/new', doctor.uid]" class="btn btn-primary">
+                Umów wizytę
+              </a>
+            </div>
           </div>
         </div>
       </div>
